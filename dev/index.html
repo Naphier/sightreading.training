@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Sight Reading Trainer</title>
+  <link rel="stylesheet" href="/dev/out/main.css">
+  <link rel="icon" sizes="144x144" href="/static/img/icon-144.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta id="csrf_token" name="csrf_token" content="dev-placeholder">
+</head>
+<body>
+  <div id="page"></div>
+  <script>
+    window.ST_initial_session = {}
+    new EventSource("/esbuild").addEventListener("change", () => location.reload())
+  </script>
+  <script src="/dev/out/main.js"></script>
+</body>
+</html>
