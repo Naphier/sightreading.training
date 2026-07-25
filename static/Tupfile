@@ -9,7 +9,7 @@ include_rules
 : service_worker.js |> !minify |> service_worker.min.js
 
 # there is no esm compatible way to import jasmine for specs so we concat all the files
-: $(TOP)/node_modules/jasmine-core/lib/jasmine-core/jasmine.js $(TOP)/node_modules/jasmine-core/lib/jasmine-core/jasmine-html.js $(TOP)/node_modules/jasmine-core/lib/jasmine-core/boot.js |> !join_js |> jasmine.js
+: $(TOP)/node_modules/jasmine-core/lib/jasmine-core/jasmine.js $(TOP)/node_modules/jasmine-core/lib/jasmine-core/jasmine-html.js $(TOP)/node_modules/jasmine-core/lib/jasmine-core/boot0.js $(TOP)/node_modules/jasmine-core/lib/jasmine-core/boot1.js |> !join_js |> jasmine.js
 
 
 : js/specs.js | main.js |> !esbuild_bundle |> specs.js | specs.js.map specs.css specs.css.map

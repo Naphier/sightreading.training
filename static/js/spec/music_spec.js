@@ -97,7 +97,7 @@ describe("scales", function() {
     ]);
   });
 
-  it("gets notes in D MajorScale", function() {
+  it("gets notes in Gb MajorScale", function() {
     let scale = new MajorScale("Gb");
     // G♭, A♭, B♭, C♭, D♭, E♭, F
     expect(scale.getRange(5)).toEqual([
