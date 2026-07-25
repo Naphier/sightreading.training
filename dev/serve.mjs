@@ -27,6 +27,7 @@ const ctx = await esbuild.context({
   outfile: "dev/out/main.js",
   nodePaths: ["static/js"],
   external: ["/static/fonts/*"],
+  define: {ST_FRONTEND_ONLY: "true"},
   logLevel: "info",
 })
 

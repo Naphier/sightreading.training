@@ -4,6 +4,7 @@ import classNames from "classnames"
 import {Link, NavLink} from "react-router-dom"
 
 import {getSession} from "st/app"
+import {FRONTEND_ONLY} from "st/globals"
 
 import {toggleActive} from "st/components/util"
 
@@ -67,6 +68,13 @@ export default class SongsPage extends React.Component {
   }
 
   refreshSongs() {
+    if (FRONTEND_ONLY) {
+      this.setState({
+        error_message: "The song library requires the backend server, which is not available in frontend-only development mode."
+      })
+      return
+    }
+
     if (this.state.loading) {
       return
     }
@@ -94,7 +102,7 @@ export default class SongsPage extends React.Component {
           mySongs: res.my_songs || [],
         })
       } catch (e) {
-        this.setState({loading: false, error_message: "Failed to fetch stats"})
+        this.setState({loading: false, error_message: "Failed to load songs."})
       }
     }
 
@@ -152,6 +160,12 @@ export default class SongsPage extends React.Component {
   }
 
   renderOverview() {
+    if (this.state.error_message) {
+      return <div className={classNames(pageContainerStyles.page_container, styles.page_container)}>
+        <p className={commonStyles.empty_message}>{this.state.error_message}</p>
+      </div>
+    }
+
     if (!this.state.songs) {
       return <div className={classNames(pageContainerStyles.page_container, styles.page_container)}>Loading...</div>
     }

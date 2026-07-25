@@ -1,6 +1,6 @@
 
 import * as React from "react"
-import {csrfToken} from "st/globals"
+import {csrfToken, FRONTEND_ONLY} from "st/globals"
 import * as types from "prop-types"
 
 import classNames from "classnames"
@@ -55,6 +55,15 @@ export class JsonForm extends React.Component {
 
   submitHandler(e) {
     e.preventDefault()
+
+    if (FRONTEND_ONLY) {
+      if (this.props.afterSubmit) {
+        this.props.afterSubmit({
+          errors: ["This form requires the backend server, which is not available in frontend-only development mode"]
+        })
+      }
+      return
+    }
 
     if (this.state.loading) { return }
 

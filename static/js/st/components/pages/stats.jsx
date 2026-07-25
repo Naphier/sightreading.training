@@ -1,5 +1,6 @@
 import * as React from "react"
 import classNames from "classnames"
+import {Navigate} from "react-router-dom"
 import {setTitle} from "st/globals"
 
 import pageContainerStyles from "../page_container.module.css"
@@ -35,9 +36,7 @@ export default class StatsPage extends React.Component {
 
     const session = getSession()
 
-    if (!session.currentUser) {
-      this.props.router.push("/")
-    } else {
+    if (session.currentUser) {
       this.loadStats()
     }
   }
@@ -151,10 +150,16 @@ export default class StatsPage extends React.Component {
   }
 
   render() {
+    if (!getSession().currentUser) {
+      return <Navigate to="/" replace />
+    }
+
     let inside
 
     if (this.state.stats) {
       inside = this.renderStats()
+    } else if (this.state.error_message) {
+      inside = this.state.error_message
     } else {
       inside = "Loading stats"
     }
