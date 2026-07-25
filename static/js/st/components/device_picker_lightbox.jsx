@@ -1,6 +1,7 @@
 import * as React from "react"
 import classNames from "classnames"
 import * as types from "prop-types"
+import {Link} from "react-router-dom"
 
 import Lightbox from "st/components/lightbox"
 import MidiSelector from "st/components/midi_selector"
@@ -130,6 +131,13 @@ export default class DevicePickerLightbox extends Lightbox {
       <p>
         <button onClick={this.close.bind(this)}>Save selections</button>
       </p>
+
+      {this.props.midi ?
+        <p className={styles.monitor_link}>
+          Not seeing anything from your device?
+          {" "}
+          <Link to="/midi-monitor" onClick={() => this.close()}>Open the MIDI monitor</Link>
+        </p> : null}
     </div>
   }
 
