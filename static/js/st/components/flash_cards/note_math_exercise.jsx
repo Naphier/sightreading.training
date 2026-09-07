@@ -14,10 +14,10 @@ import staffStyles from "st/components/staff.module.css"
 
 import * as types from "prop-types"
 
-const NATURAL_NOTES = ["C", "D", "E", "F", "G", "A", "B"]
+export const NATURAL_NOTES = ["C", "D", "E", "F", "G", "A", "B"]
 const NATURAL_PITCHES = [0, 2, 4, 5, 7, 9, 11]
-const SHARP_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-const FLAT_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
+export const SHARP_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+export const FLAT_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
 const ACCIDENTAL_PITCHES = [1, 3, 6, 8, 10]
 const ROOT_LABELS = {
   "C#": "C#/Db",
@@ -51,8 +51,13 @@ const ACCIDENTAL_INTERVALS = [
   {label: "#9", steps: 3},
 ]
 
-function pitchClass(note) {
+export function pitchClass(note) {
   return ((parseNote(`${note}5`) % 12) + 12) % 12
+}
+
+export function diatonicAnswerPitch(rootLabel, steps) {
+  let rootIndex = NATURAL_NOTES.indexOf(rootLabel[0])
+  return NATURAL_PITCHES[(rootIndex + steps) % NATURAL_NOTES.length]
 }
 
 export default class NoteMathExercise extends React.PureComponent {
@@ -66,7 +71,7 @@ export default class NoteMathExercise extends React.PureComponent {
   static defaultSettings() {
     return {
       enabledRoots: {"D": true},
-      incidentals: false,
+      accidentals: false,
       randomizeAccidentals: false,
       virtualMidiKeyboard: false,
       intervalAccidentals: false,
@@ -84,11 +89,11 @@ export default class NoteMathExercise extends React.PureComponent {
       let update = {[name]: !settings[name]}
 
       // Both dependent features require chromatic answers to be available.
-      if (name == "incidentals" && settings.incidentals) {
+      if (name == "accidentals" && settings.accidentals) {
         update.randomizeAccidentals = false
         update.intervalAccidentals = false
       } else if (name == "intervalAccidentals" && !settings.intervalAccidentals) {
-        update.incidentals = true
+        update.accidentals = true
       }
 
       this.props.updateSettings({...settings, ...update})
@@ -111,14 +116,15 @@ export default class NoteMathExercise extends React.PureComponent {
 
     render() {
       let settings = this.props.currentSettings
-      let notes = settings.incidentals ? SHARP_NAMES : NATURAL_NOTES
+      let notes = settings.accidentals ? SHARP_NAMES : NATURAL_NOTES
+      let allRootsEnabled = notes.every(note => settings.enabledRoots[note])
 
       return <>
         <section className={settingsPanelStyles.settings_group}>
           <h4>Options</h4>
-          <div className={settingsPanelStyles.button_group}>
-            {this.renderToggle("incidentals", "Incidentals")}
-            {this.renderToggle("randomizeAccidentals", "Randomize b/#", !settings.incidentals)}
+          <div className={flashCardStyles.option_list}>
+            {this.renderToggle("accidentals", "Accidentals")}
+            {this.renderToggle("randomizeAccidentals", "Randomize b/#", !settings.accidentals)}
             {this.renderToggle("intervalAccidentals", "Interval Accidentals")}
             {this.renderToggle("virtualMidiKeyboard", "Virtual MIDI Keyboard")}
           </div>
@@ -126,6 +132,20 @@ export default class NoteMathExercise extends React.PureComponent {
         <section className={settingsPanelStyles.settings_group}>
           <h4>Root notes</h4>
           <div className={settingsPanelStyles.button_group}>
+            <label className={classNames(flashCardStyles.test_group, {
+              [flashCardStyles.selected]: allRootsEnabled,
+            })}>
+              <input
+                type="checkbox"
+                checked={allRootsEnabled}
+                onChange={() => this.props.updateSettings({
+                  ...settings,
+                  enabledRoots: allRootsEnabled
+                    ? {"C": true}
+                    : Object.fromEntries(notes.map(note => [note, true])),
+                })} />
+              All
+            </label>
             {notes.map((note) =>
               <label
                 key={note}
@@ -261,7 +281,7 @@ export default class NoteMathExercise extends React.PureComponent {
   refreshCards(fn) {
     let settings = this.props.settings
     let enabledRoots = settings.enabledRoots
-    let chromatic = settings.incidentals
+    let chromatic = settings.accidentals
     let rootNames = chromatic ? SHARP_NAMES : NATURAL_NOTES
     let rootPitches = chromatic ? SHARP_NAMES.map(pitchClass) : NATURAL_PITCHES
     let intervals = settings.intervalAccidentals
@@ -273,18 +293,12 @@ export default class NoteMathExercise extends React.PureComponent {
       if (!enabledRoots[rootName]) return
 
       intervals.forEach(interval => {
-        let answerPitch
-        if (chromatic || ACCIDENTAL_INTERVALS.includes(interval)) {
-          answerPitch = (rootPitches[rootIndex] + interval.steps) % 12
-        } else {
-          answerPitch = NATURAL_PITCHES[(rootIndex + interval.steps) % NATURAL_PITCHES.length]
-        }
-
         cards.push({
           score: 1,
           intervalLabel: interval.label,
           rootPitch: rootPitches[rootIndex],
-          answerPitch,
+          chromaticInterval: ACCIDENTAL_INTERVALS.includes(interval),
+          steps: interval.steps,
         })
       })
     })
@@ -294,7 +308,7 @@ export default class NoteMathExercise extends React.PureComponent {
   }
 
   noteNamesForTurn() {
-    if (!this.props.settings.incidentals) return NATURAL_NOTES
+    if (!this.props.settings.accidentals) return SHARP_NAMES
     if (!this.props.settings.randomizeAccidentals) return SHARP_NAMES
 
     let useSharps = ACCIDENTAL_PITCHES.map(() => this.rand.random() < 0.5)
@@ -326,7 +340,10 @@ export default class NoteMathExercise extends React.PureComponent {
     let card = cards[cardOrder.shift()]
     let noteNames = this.noteNamesForTurn()
     let rootLabel = noteNames[card.rootPitch]
-    let options = (this.props.settings.incidentals ? noteNames : NATURAL_NOTES)
+    let answerPitch = card.chromaticInterval
+      ? (card.rootPitch + card.steps) % 12
+      : diatonicAnswerPitch(rootLabel, card.steps)
+    let options = (this.props.settings.accidentals ? noteNames : NATURAL_NOTES)
       .map(label => ({label, pitch: pitchClass(label)}))
 
     this.setState({
@@ -336,6 +353,7 @@ export default class NoteMathExercise extends React.PureComponent {
       currentCard: {
         ...card,
         sourceCard: card,
+        answerPitch,
         label: `${card.intervalLabel} of ${rootLabel} is`,
         options,
       },

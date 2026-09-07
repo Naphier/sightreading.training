@@ -178,6 +178,12 @@
         }
     }
 
+    .option_list {
+        display: grid;
+        gap: 5px;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .with_keyboard {
         padding-bottom: var(--keyboard-height);
     }
