@@ -27,6 +27,23 @@ watches for changes, and reloads the page automatically. Backend-only features
 (login, stats, the play-along song library) will not function in this mode;
 everything else works, including MIDI input and output.
 
+## Remote development with GitHub Codespaces
+
+To test a pull-request branch without installing anything locally:
+
+1. Open the pull request on GitHub, select **Code**, then **Codespaces**, and
+   create a codespace on the pull-request branch.
+2. Wait for the container setup to finish. Dependencies are installed
+   automatically.
+3. Run `npm run dev` in the Codespaces terminal.
+4. When Codespaces forwards port 3000, select **Open in Browser**. If the
+   notification is missed, open the **Ports** panel and use the globe icon next
+   to **Sight Reading Trainer**.
+5. Visit `/flash-cards/note-math` on the forwarded HTTPS URL.
+
+The forwarded site runs in the codespace; only the browser is local. The
+frontend-only limitations below still apply.
+
 The full site build (backend + minified production assets) uses the
 [tup](https://gittup.org/tup/) build system, see the Tupfiles in the repo.
 
