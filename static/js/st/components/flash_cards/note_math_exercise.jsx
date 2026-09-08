@@ -15,7 +15,6 @@ import staffStyles from "st/components/staff.module.css"
 import * as types from "prop-types"
 
 export const NATURAL_NOTES = ["C", "D", "E", "F", "G", "A", "B"]
-const NATURAL_PITCHES = [0, 2, 4, 5, 7, 9, 11]
 export const SHARP_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 export const FLAT_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
 const ACCIDENTAL_PITCHES = [1, 3, 6, 8, 10]
@@ -73,7 +72,6 @@ export default class NoteMathExercise extends React.PureComponent {
   static defaultSettings() {
     return {
       enabledRoots: {"D": true},
-      accidentals: false,
       randomizeAccidentals: false,
       virtualMidiKeyboard: false,
       intervalAccidentals: false,
@@ -89,14 +87,6 @@ export default class NoteMathExercise extends React.PureComponent {
     updateToggle(name) {
       let settings = this.props.currentSettings
       let update = {[name]: !settings[name]}
-
-      // Both dependent features require chromatic answers to be available.
-      if (name == "accidentals" && settings.accidentals) {
-        update.randomizeAccidentals = false
-        update.intervalAccidentals = false
-      } else if (name == "intervalAccidentals" && !settings.intervalAccidentals) {
-        update.accidentals = true
-      }
 
       this.props.updateSettings({...settings, ...update})
     }
@@ -118,7 +108,7 @@ export default class NoteMathExercise extends React.PureComponent {
 
     render() {
       let settings = this.props.currentSettings
-      let notes = settings.accidentals ? SHARP_NAMES : NATURAL_NOTES
+      let notes = SHARP_NAMES
       let allRootsEnabled = notes.every(note => settings.enabledRoots[note])
       let naturalsEnabled = NATURAL_NOTES.every(note => settings.enabledRoots[note]) &&
         ACCIDENTAL_PITCHES.every(pitch => !settings.enabledRoots[SHARP_NAMES[pitch]])
@@ -127,8 +117,7 @@ export default class NoteMathExercise extends React.PureComponent {
         <section className={settingsPanelStyles.settings_group}>
           <h4>Options</h4>
           <div className={flashCardStyles.option_list}>
-            {this.renderToggle("accidentals", "Accidentals")}
-            {this.renderToggle("randomizeAccidentals", "Randomize b/#", !settings.accidentals)}
+            {this.renderToggle("randomizeAccidentals", "Randomize b/#")}
             {this.renderToggle("intervalAccidentals", "Interval Accidentals")}
             {this.renderToggle("virtualMidiKeyboard", "Virtual MIDI Keyboard")}
           </div>
@@ -299,9 +288,8 @@ export default class NoteMathExercise extends React.PureComponent {
   refreshCards(fn) {
     let settings = this.props.settings
     let enabledRoots = settings.enabledRoots
-    let chromatic = settings.accidentals
-    let rootNames = chromatic ? SHARP_NAMES : NATURAL_NOTES
-    let rootPitches = chromatic ? SHARP_NAMES.map(pitchClass) : NATURAL_PITCHES
+    let rootNames = SHARP_NAMES
+    let rootPitches = SHARP_NAMES.map(pitchClass)
     let intervals = settings.intervalAccidentals
       ? STANDARD_INTERVALS.concat(ACCIDENTAL_INTERVALS)
       : STANDARD_INTERVALS
@@ -312,8 +300,6 @@ export default class NoteMathExercise extends React.PureComponent {
 
       intervals.forEach(interval => {
         let answerPitch = (rootPitches[rootIndex] + interval.steps) % 12
-        if (!settings.accidentals && !NATURAL_PITCHES.includes(answerPitch)) return
-
         cards.push({
           score: 1,
           intervalLabel: interval.label,
@@ -329,7 +315,6 @@ export default class NoteMathExercise extends React.PureComponent {
   }
 
   noteNamesForTurn() {
-    if (!this.props.settings.accidentals) return SHARP_NAMES
     if (!this.props.settings.randomizeAccidentals) return SHARP_NAMES
 
     let useSharps = ACCIDENTAL_PITCHES.map(() => this.rand.random() < 0.5)
@@ -361,8 +346,7 @@ export default class NoteMathExercise extends React.PureComponent {
     let card = cards[cardOrder.shift()]
     let noteNames = this.noteNamesForTurn()
     let rootLabel = noteNames[card.rootPitch]
-    let options = (this.props.settings.accidentals ? noteNames : NATURAL_NOTES)
-      .map(label => ({label, pitch: pitchClass(label)}))
+    let options = noteNames.map(label => ({label, pitch: pitchClass(label)}))
 
     this.setState({
       cardMistakes: null,

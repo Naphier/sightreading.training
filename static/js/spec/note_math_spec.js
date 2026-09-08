@@ -22,6 +22,7 @@ describe("Note Math", function() {
   })
 
   it("calculates reported interval cases correctly", function() {
+    expect(intervalAnswerPitch("D", 4)).toBe(pitchClass("F#"))
     expect(intervalAnswerPitch("B", 9)).toBe(pitchClass("G#"))
     expect(intervalAnswerPitch("A#", 7)).toBe(pitchClass("F"))
   })
