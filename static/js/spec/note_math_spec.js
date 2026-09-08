@@ -2,25 +2,33 @@ import {
   NATURAL_NOTES,
   SHARP_NAMES,
   FLAT_NAMES,
+  STANDARD_INTERVALS,
   pitchClass,
-  diatonicAnswerPitch,
+  intervalAnswerPitch,
+  enabledRootPreset,
 } from "st/components/flash_cards/note_math_exercise"
 
 describe("Note Math", function() {
-  it("maps every natural root to a defined diatonic answer", function() {
-    for (let root of NATURAL_NOTES) {
-      for (let steps = 1; steps <= 6; steps++) {
-        let answer = diatonicAnswerPitch(root, steps)
-        expect(answer).toBeDefined()
-        expect(NATURAL_NOTES.map(pitchClass)).toContain(answer)
+  it("maps standard intervals to their major or perfect half steps", function() {
+    expect(STANDARD_INTERVALS.map(interval => interval.steps)).toEqual([2, 4, 5, 7, 9, 11])
+
+    for (let root of SHARP_NAMES) {
+      for (let interval of STANDARD_INTERVALS) {
+        expect(intervalAnswerPitch(root, interval.steps)).toBe(
+          (pitchClass(root) + interval.steps) % 12
+        )
       }
     }
   })
 
-  it("counts intervals by note letter instead of chromatic array index", function() {
-    expect(diatonicAnswerPitch("A", 3)).toBe(pitchClass("D"))
-    expect(diatonicAnswerPitch("A", 5)).toBe(pitchClass("F"))
-    expect(diatonicAnswerPitch("D", 6)).toBe(pitchClass("C"))
+  it("calculates reported interval cases correctly", function() {
+    expect(intervalAnswerPitch("B", 9)).toBe(pitchClass("G#"))
+    expect(intervalAnswerPitch("A#", 7)).toBe(pitchClass("F"))
+  })
+
+  it("builds natural-only and all-root presets", function() {
+    expect(Object.keys(enabledRootPreset(NATURAL_NOTES))).toEqual(NATURAL_NOTES)
+    expect(Object.keys(enabledRootPreset(SHARP_NAMES))).toEqual(SHARP_NAMES)
   })
 
   it("supports sharp and flat spellings for all twelve pitch classes", function() {
