@@ -27,6 +27,12 @@ watches for changes, and reloads the page automatically. Backend-only features
 (login, stats, the play-along song library) will not function in this mode;
 everything else works, including MIDI input and output.
 
+To generate a CSV table of every Note Math interval calculation for review:
+
+```bash
+npm run --silent note_math_csv > note-math.csv
+```
+
 ## Remote development with GitHub Codespaces
 
 To test a pull-request branch without installing anything locally:

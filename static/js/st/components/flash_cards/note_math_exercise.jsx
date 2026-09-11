@@ -1,5 +1,25 @@
 import {keyCodeToChar} from "st/keyboard_input"
-import {parseNote} from "st/music"
+import {
+  NATURAL_NOTES,
+  SHARP_NAMES,
+  FLAT_NAMES,
+  ACCIDENTAL_PITCHES,
+  ROOT_LABELS,
+  STANDARD_INTERVALS,
+  ACCIDENTAL_INTERVALS,
+  pitchClass,
+  enabledRootPreset,
+} from "st/note_math_helpers.mjs"
+
+export {
+  NATURAL_NOTES,
+  SHARP_NAMES,
+  FLAT_NAMES,
+  STANDARD_INTERVALS,
+  pitchClass,
+  intervalAnswerPitch,
+  enabledRootPreset,
+} from "st/note_math_helpers.mjs"
 
 import {CardHolder} from "st/components/flash_cards/common"
 import Keyboard from "st/components/keyboard"
@@ -13,53 +33,6 @@ import flashCardStyles from "st/components/flash_cards/flash_cards.module.css"
 import staffStyles from "st/components/staff.module.css"
 
 import * as types from "prop-types"
-
-export const NATURAL_NOTES = ["C", "D", "E", "F", "G", "A", "B"]
-export const SHARP_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-export const FLAT_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
-const ACCIDENTAL_PITCHES = [1, 3, 6, 8, 10]
-const ROOT_LABELS = {
-  "C#": "C#/Db",
-  "D#": "D#/Eb",
-  "F#": "F#/Gb",
-  "G#": "G#/Ab",
-  "A#": "A#/Bb",
-}
-
-// Unqualified intervals are major (2, 3, 6, 7) or perfect (4, 5).
-export const STANDARD_INTERVALS = [
-  {label: "2", steps: 2},
-  {label: "3", steps: 4},
-  {label: "4", steps: 5},
-  {label: "5", steps: 7},
-  {label: "6", steps: 9},
-  {label: "7", steps: 11},
-]
-
-const ACCIDENTAL_INTERVALS = [
-  {label: "min 2", steps: 1},
-  {label: "aug 2", steps: 3},
-  {label: "min 3", steps: 3},
-  {label: "dim 5", steps: 6},
-  {label: "aug 5", steps: 8},
-  {label: "min 6", steps: 8},
-  {label: "dim 7", steps: 9},
-  {label: "bb7", steps: 9},
-  {label: "min 7", steps: 10},
-  {label: "#9", steps: 3},
-]
-
-export function pitchClass(note) {
-  return ((parseNote(`${note}5`) % 12) + 12) % 12
-}
-
-export function intervalAnswerPitch(root, halfSteps) {
-  return (pitchClass(root) + halfSteps) % 12
-}
-
-export function enabledRootPreset(notes) {
-  return Object.fromEntries(notes.map(note => [note, true]))
-}
 
 export default class NoteMathExercise extends React.PureComponent {
   static exerciseName = "Note Math"
@@ -299,13 +272,13 @@ export default class NoteMathExercise extends React.PureComponent {
       if (!enabledRoots[rootName]) return
 
       intervals.forEach(interval => {
-        let answerPitch = (rootPitches[rootIndex] + interval.steps) % 12
+        let answerPitch = (rootPitches[rootIndex] + interval.halfSteps) % 12
         cards.push({
           score: 1,
           intervalLabel: interval.label,
           rootPitch: rootPitches[rootIndex],
           answerPitch,
-          steps: interval.steps,
+          halfSteps: interval.halfSteps,
         })
       })
     })
