@@ -30,7 +30,7 @@ everything else works, including MIDI input and output.
 To generate a CSV table of every Note Math interval calculation for review:
 
 ```bash
-npm run --silent note_math_csv > note-math.csv
+mkdir -p dev/out && npm run --silent note_math_csv > dev/out/note-math.csv
 ```
 
 ## Remote development with GitHub Codespaces
