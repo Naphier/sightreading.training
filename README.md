@@ -102,3 +102,24 @@ This is a frontend-only preview. Check guest settings by changing Configure opti
 Mode, Speed and keyboard visibility, then reloading. Build a streak, miss a note,
 and verify Last Streak stays visible through more misses. Reset should zero the
 session counters. Account sync and account Stats need a backend-enabled deployment.
+
+## Full-backend production runtime
+
+Production requires `SR_STAGE` (`dev` or `prd`), `SR_PUBLIC_URL` (an HTTPS origin
+without a trailing slash), `SR_DB_HOST`, `SR_DB_NAME`, `SR_DB_USER`, and the
+`SR_DB_PASSWORD` / `SR_SESSION_SECRET` secrets. Each secret may instead be read
+from its corresponding `_FILE` path; do not supply both sources. Session secrets
+must have at least 32 characters and differ between stages. Missing production
+configuration fails closed. Keep these values outside the repository.
+
+The production process runs in the foreground, uses secure host-only session
+cookies, and rejects unexpected Host headers. `GET /_health/ready` checks database
+connectivity and the required trainer-preferences schema; it returns 503 without
+database error details when unavailable. Internal health clients must send the
+configured public hostname in their Host header. Deployment scripts and server
+configuration live in the private operations repository.
+
+Backend CI uses the root Dockerfile as a disposable test runner with stable Lapis
+and PostgreSQL. Generate assets with `npm ci && npm run build_assets`, then run
+`docker build -t sightreading-test .` and `docker run --rm sightreading-test`.
+Its database is local to that throwaway container; do not run `ci.sh` on a host.

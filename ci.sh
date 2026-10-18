@@ -1,32 +1,17 @@
-#!/bin/bash
-set -e
-set -o pipefail
-set -o xtrace
-
-# setup lua
-luarocks --lua-version=5.1 install https://luarocks.org/manifests/leafo/lapis-dev-1.rockspec
-luarocks --lua-version=5.1 install bcrypt
-luarocks --lua-version=5.1 install tableshape
-eval $(luarocks --lua-version=5.1 path)
-
-# # js
-# npm install
-
-echo "config 'test', -> logging false" >> config.moon
-
-# build
-tup init && tup generate build.sh && ./build.sh
-cat $(which busted) | sed 's/\/usr\/bin\/lua5\.1/\/usr\/local\/openresty\/luajit\/bin\/luajit/' > busted
-chmod +x busted
-
-# start postgres
-echo "fsync = off" >> /var/lib/postgres/data/postgresql.conf
-echo "synchronous_commit = off" >> /var/lib/postgres/data/postgresql.conf
-echo "full_page_writes = off" >> /var/lib/postgres/data/postgresql.conf
-su postgres -c '/usr/bin/pg_ctl -s -D /var/lib/postgres/data start -w -t 120'
-
-make init_schema
-make migrate
-make test_db
-
-./busted -o utfTerminal
+#!/usr/bin/env bash
+# Only run inside the disposable CI image; never against a deployment database.
+set -euo pipefail
+[[ -f /etc/debian_version && -d /etc/postgresql/15/main ]] || { echo 'Use the repository CI Docker image.' >&2; exit 1; }
+# Trust applies only to the isolated throwaway CI cluster, which publishes no port.
+printf 'local all all trust\nhost all all 127.0.0.1/32 trust\nhost all all ::1/128 trust\n' > /etc/postgresql/15/main/pg_hba.conf
+pg_ctlcluster 15 main start
+trap 'pg_ctlcluster 15 main stop' EXIT
+createdb -h 127.0.0.1 -U postgres sightreading
+psql -X -h 127.0.0.1 -U postgres -d sightreading -v ON_ERROR_STOP=1 -f schema.sql > /dev/null
+lapis migrate development
+createdb -h 127.0.0.1 -U postgres sightreading_test
+pg_dump -h 127.0.0.1 -U postgres --schema-only sightreading | psql -X -h 127.0.0.1 -U postgres -d sightreading_test -v ON_ERROR_STOP=1 > /dev/null
+pg_dump -h 127.0.0.1 -U postgres --data-only -t lapis_migrations sightreading | psql -X -h 127.0.0.1 -U postgres -d sightreading_test -v ON_ERROR_STOP=1 > /dev/null
+exec_status=0
+busted -o utfTerminal || exec_status=$?
+exit "$exec_status"
