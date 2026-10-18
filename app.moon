@@ -52,8 +52,7 @@ class extends lapis.Application
     json: @flow("formatter")\session!
 
   "/_health/ready": get =>
-    db = require "lapis.db"
-    ok = pcall -> db.query "select trainer_preferences from users limit 0"
+    ok = require("helpers.readiness").check!
     status: (if ok then 200 else 503), headers: { ["Cache-Control"]: "no-store" }, json: { ready: ok }
 
   "/hits.json": post =>
