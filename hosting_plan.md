@@ -2,6 +2,10 @@
 
 Proposal researched October 17, 2026. This PR proposes architecture and setup; it does not deploy anything, change repository visibility, or add live workflows. Hostnames, paths and account names below are proposed values, not credentials or evidence of an existing installation.
 
+## Selected approach
+
+**Decision update:** use manual **Run workflow** dispatch in the private operations repository for now. There is no poller, public-repo dispatcher, GitHub App or cross-repository dispatch credential. Start dev deployment manually, then manually promote a successful dev release to prd. [deploy_implementation.md](deploy_implementation.md) is the step-by-step implementation runbook. The trigger alternatives below remain background research, not work to enable initially.
+
 ## Recommendation
 
 Keep this application fork public and create a **separate private operations repository**, for example `Naphier/sightreading-ops`. Put the production Docker build, Compose definitions, deployment workflows, server configuration templates, backup jobs and runbooks there. Use GitHub-hosted runners to build an immutable image, then deploy it over restricted SSH to the existing WHM server.
@@ -17,7 +21,7 @@ The dev hostname is a suggestion; choose it before provisioning DNS. These are t
 
 ```mermaid
 flowchart LR
-    S[Public app repo: CI on master] -->|dispatch dev build| O[Private operations repo]
+    S[Owner: Run workflow with app SHA] --> O[Private operations repo]
     O --> B[Build and test exact source SHA]
     B --> R[Private GHCR image by digest]
     R --> D[Restricted SSH: deploy dev]
@@ -53,9 +57,9 @@ flowchart LR
 | **C. Both repos private + reusable workflow** | Move/detach the app first; add `workflow_call` caller. | Direct reuse matches the original idea. | Loses ordinary public-fork behavior; private Actions billing and environment features depend on the GitHub plan. |
 | **D. Private self-hosted deployment runner** | Dispatcher or polling as above. | Can avoid opening inbound SSH for CI. | The runner executes deployment code on the server. Prefer a dedicated runner VM, not a public-PR runner on a shared WHM host; Docker-group access is effectively root. More maintenance than hosted runners + SSH. |
 
-Use **A** unless the public dispatcher itself is undesirable; use **B** for maximum separation. A GitHub App webhook receiver can also trigger private automation, but operating another public service is unnecessary initially. Do not use FTP: uploading files cannot safely coordinate container releases, migrations, health checks or rollback. SFTP is encrypted but still does not replace a deployment command; restricted SSH handles both control and transport.
+The selected initial approach is **manual dispatch only in the private repo**: neither A’s public dispatcher nor B’s polling schedule is required. A and B remain possible later if deployments become frequent. A GitHub App webhook receiver can also trigger private automation, but operating another public service is unnecessary initially. Do not use FTP: uploading files cannot safely coordinate container releases, migrations, health checks or rollback. SFTP is encrypted but still does not replace a deployment command; restricted SSH handles both control and transport.
 
-### Proposed event flow for option A
+### Alternative event flow for option A (not selected)
 
 1. CI succeeds for a **push to protected `master`** in this repo. A small dispatcher runs only for that trusted event. With `workflow_run`, require the expected upstream workflow identity, `conclusion == success`, `event == push`, `head_branch == master`, and the expected source repository ID. Never deploy a fork PR or blindly run its artifact in a privileged follow-up job.
 2. The dispatcher obtains a short-lived GitHub App installation token and calls the private repo's `dev-deploy.yml` through `workflow_dispatch`, with the full application commit SHA as its only release input. The deployment workflow exists on the private repo's default branch; dispatch it with a fixed protected operations ref such as `main`. [6]
@@ -218,7 +222,7 @@ Match User sr-dev-ci,sr-prd-ci
 Match all
 ```
 
-Create each root-managed key file with mode 0600, then install its stage-specific restricted public-key line. Verify the daemon's account/password-lock policy still permits public-key authentication for the dedicated identities. Before ending bootstrap access, test a valid deployment request and confirm an attempted interactive shell, SFTP session and cross-stage request are rejected.
+Create each root-managed **public** authorized-key file root-owned mode 0644 under the non-user-writable directory, then install its stage-specific restricted public-key line. It must be readable when sshd checks it as the target account; a root-owned mode-0600 file there can prevent key authentication. Private key files remain mode 0600. Verify any SELinux file context required by the centralized path. Verify the daemon's account/password-lock policy still permits public-key authentication for the dedicated identities. Before ending bootstrap access, test a valid deployment request and confirm an attempted interactive shell, SFTP session and cross-stage request are rejected.
 
 A minimal proposed sudoers fragment uses **no command arguments**; the helper reads its strictly validated protocol from stdin:
 
@@ -260,7 +264,7 @@ Document each temporary key/token's issuer, authorized scope, expiry, rotation o
 ## Release, data and recovery procedure
 
 1. **Prepare:** stabilize CI before tying deployments to it; implement the production image, environment adapter, secure cookies, private release validation and restricted server helpers. Ensure readiness checks exercise the actual backend rather than only a PID or open port. Bootstrap a fresh database through migrations (or a reviewed restore), not `ci.sh` or test fixtures.
-2. **Dev:** deploy a validated `master` SHA automatically; verify HTTPS, registration/login/logout, CSRF rejection, settings restore across separate authenticated browsers, hit uploads, Stats and the song routes. Check keyboard/MIDI in a secure browser context. Confirm a container restart retains account settings and statistics.
+2. **Dev:** manually dispatch deployment of a validated `master` SHA; verify HTTPS, registration/login/logout, CSRF rejection, settings restore across separate authenticated browsers, hit uploads, Stats and the song routes. Check keyboard/MIDI in a secure browser context. Confirm a container restart retains account settings and statistics.
 3. **Promote:** the authorized owner selects the successful dev image digest. Before migrations, take and verify a production backup. Prefer additive/backward-compatible schema changes. For a breaking migration, require an explicit maintenance plan; do not promise zero-downtime rollback.
 4. **Deploy:** run one migration job with a stage-level lock, then start the new app against the existing DB. A simple single-app replacement may cause a brief interruption; initial simplicity is preferable to claiming zero downtime. Use blue/green app instances and a proxy switch later if interruption becomes unacceptable.
 5. **Check:** validate internal readiness and the external HTTPS hostname, preserving cookies/CSRF flow. Failed health checks stop promotion. Save the release SHA/digest, migration result, previous release, timestamps and backup identifier privately.
@@ -272,9 +276,9 @@ A new hostname/server does not inherit the old maintainer's users, songs or stat
 
 ## Implementation sequence and acceptance criteria
 
-This proposal adds **only this plan**. Follow-up implementation should be split into reviewable changes:
+This proposal adds documentation only: this plan and the manual-deployment implementation runbook. Follow-up implementation should be split into reviewable changes:
 
-1. Confirm WHM OS/web stack, root access, DNS authority, available resources, GitHub plan, preferred dev hostname, and whether data migration from the original host is required. Choose A or B; create the private operations repo only after that choice.
+1. Confirm WHM OS/web stack, root access, DNS authority, available resources, GitHub plan, preferred dev hostname, and whether data migration from the original host is required. Use the selected private-repo manual-dispatch approach; no trigger credential or polling schedule is needed.
 2. Make generic application configuration/cookie improvements here. Build and test the production image and Compose setup in the private repo; fix the CI prerequisite rather than skipping failed tests.
 3. Provision DNS/TLS, persistent volumes, backups and the private dev stack. Install the reviewed SSH gate/helpers and verified host keys. Issue temporary dev access and store it securely.
 4. Automate dev, test credential expiry/denials, and demonstrate persistence across container replacement and reboot. Verify dev data cannot access production and public network probes cannot reach app/DB ports.
