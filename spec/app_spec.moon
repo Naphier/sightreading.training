@@ -17,6 +17,11 @@ describe "app", ->
     status = request "/"
     assert.same 200, status
 
+  it "reports database-backed readiness", ->
+    status, res = request "/_health/ready", expect: "json"
+    assert.same 200, status
+    assert.same { ready: true }, res
+
   it "gets presets", ->
     status, res = request "/presets.json", {
       expect: "json"

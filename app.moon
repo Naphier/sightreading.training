@@ -6,6 +6,7 @@ import set_csrf from require "helpers.csrf"
 import get, post, multi from require "helpers.app"
 
 date = require "date"
+config = require("lapis.config").get!
 
 class extends lapis.Application
   @include "applications.admin"
@@ -14,10 +15,17 @@ class extends lapis.Application
 
   cookie_attributes: =>
     expires = date(true)\adddays(365)\fmt "${http}"
-    attr = "Expires=#{expires}; Path=/; HttpOnly"
+    attr = "Expires=#{expires}; Path=/; HttpOnly; SameSite=Lax"
+    attr ..= "; Secure" if config._name == "production"
     attr
 
   @before_filter =>
+    if config.public_host and @req.headers.host != config.public_host
+      @write { status: 400, layout: false }, "Invalid host"
+      return
+
+    return if @req.parsed_url.path == "/_health/ready"
+
     import Users from require "models"
     set_csrf @
 
@@ -42,6 +50,11 @@ class extends lapis.Application
   "/register.json": post =>
     @flow("login")\do_register!
     json: @flow("formatter")\session!
+
+  "/_health/ready": get =>
+    db = require "lapis.db"
+    ok = pcall -> db.query "select trainer_preferences from users limit 0"
+    status: (if ok then 200 else 503), headers: { ["Cache-Control"]: "no-store" }, json: { ready: ok }
 
   "/hits.json": post =>
     @flow("hits")\register_hits!

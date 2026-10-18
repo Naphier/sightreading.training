@@ -13,8 +13,14 @@ config {"development", "production", "test"}, ->
   }
 
 config "production", ->
-  daemon "on"
-  notice_log "logs/notice.log"
+  logging false
+  runtime = require("helpers.runtime_config").production!
+  daemon "off"
+  notice_log "stderr"
+  secret runtime.secret
+  session_name runtime.session_name
+  public_host runtime.public_host
+  postgres runtime.postgres
   code_cache "on"
   num_workers 3
   port 10007
@@ -23,6 +29,7 @@ config "production", ->
 
 
 config "test", ->
+  logging false
   code_cache "on"
 
   postgres {

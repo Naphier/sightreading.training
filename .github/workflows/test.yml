@@ -1,20 +1,19 @@
-name: "test"
-
+name: test
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   docker:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 25
     steps:
-    - uses: actions/checkout@master
-
-    - name: npm install
-      run: npm install
-
-    - name: build
-      run: |
-        docker build -t sightreading-test .
-
-    - name: test
-      run: |
-        docker run sightreading-test
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: '24', cache: npm}
+      - name: Locked frontend dependencies and generated assets
+        run: npm ci && npm run build_assets
+      - name: Build disposable backend test image
+        run: docker build -t sightreading-test .
+      - name: Test full backend with disposable PostgreSQL
+        run: docker run --rm sightreading-test
