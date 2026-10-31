@@ -1,0 +1,7 @@
+.git
+node_modules
+logs
+dev/out
+.tup
+*.lua
+nginx.conf.compiled
