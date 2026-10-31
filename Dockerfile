@@ -6,5 +6,5 @@ WORKDIR /site/sightreading.training
 COPY . .
 # Checkout permissions vary between local and hosted CI. Nginx's worker must read
 # the compiled app, assets and config in this disposable test container.
-RUN find . -name '*.moon' -exec moonc {} + && chmod -R a+rX /site
+RUN printf 'disposable sightreading CI image\n' > /usr/local/share/sightreading-disposable-ci && find . -name '*.moon' -exec moonc {} + && chmod -R a+rX /site
 ENTRYPOINT ["bash", "./ci.sh"]

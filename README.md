@@ -109,7 +109,9 @@ Production requires `SR_STAGE` (`dev` or `prd`), `SR_PUBLIC_URL` (an HTTPS origi
 without a trailing slash), `SR_DB_HOST`, `SR_DB_NAME`, `SR_DB_USER`, and the
 `SR_DB_PASSWORD` / `SR_SESSION_SECRET` secrets. Each secret may instead be read
 from its corresponding `_FILE` path; do not supply both sources. Session secrets
-must have at least 32 characters and differ between stages. Missing production
+must have at least 32 characters and differ between stages. Secret inputs are
+limited to 4096 bytes; file reads are bounded and trim trailing CR/LF. Public
+hostnames are validated and normalized to lowercase. Missing production
 configuration fails closed. Keep these values outside the repository.
 
 The production process runs in the foreground, uses secure host-only session
@@ -123,3 +125,7 @@ Backend CI uses the root Dockerfile as a disposable test runner with stable Lapi
 and PostgreSQL. Generate assets with `npm ci && npm run build_assets`, then run
 `docker build -t sightreading-test .` and `docker run --rm sightreading-test`.
 Its database is local to that throwaway container; do not run `ci.sh` on a host.
+The script checks an image-only marker before changing PostgreSQL configuration.
+It discovers MoonScript specs once, excluding their generated Lua copies. The CI
+image uses Debian PostgreSQL 15; the private runtime integration also checks the
+production PostgreSQL 17 stack.
