@@ -33,8 +33,12 @@ first step after changing meter or bar count to discard already scheduled hits.
   styles in `<tool>_page.module.css`. Call `setTitle` when mounting. Use a class
   component when receiving the existing layout's page ref (see `pageProps()`).
 - Use the site's shared colors and controls. Add visible keyboard focus, labels,
-  toggle states, and status messages. Make wide controls scroll within the page
+  toggle states, and accessible temporary status toasts. Make wide controls scroll within the page
   and verify the mobile layout.
+- Use `components/toast.jsx` for routine status feedback such as saved/deleted
+  confirmations. Toasts dismiss after five seconds and can be closed manually;
+  repeat notifications reset the timer. Do not reserve page space for status
+  messages. Keep actionable validation errors in the form/dialog until corrected.
 
 Reference modules: `drum_patterns.js`, `drum_audio.js`, and
 `components/pages/drum_machine_page.jsx` under `static/js/st/`.

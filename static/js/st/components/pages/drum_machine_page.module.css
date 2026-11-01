@@ -47,7 +47,5 @@
 .nameDialog input { box-sizing: border-box; width: 100%; }
 .nameDialog p { font-size: 13px; line-height: 1.5; }
 .dialogActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
-.message { margin: 0 0 12px; font-size: 14px; }
-.message:empty { margin: 0; }
 @media (max-width: 800px) { .heading { align-items: flex-start; flex-direction: column; } .patternManager { align-self: flex-end; } }
 @media (max-width: 450px) { .page { padding: 20px 10px; } .panel { padding: 12px; } .presets { grid-template-columns: repeat(2, 1fr); } }

@@ -1,5 +1,6 @@
 import {TRACKS, PRESETS, STORAGE_KEY, emptyPattern, validatePattern, resizePattern, readSavedPatterns, stepDuration, TIME_SIGNATURES, changeTimeSignature, stepMarker} from "st/drum_patterns"
 import DrumAudio from "st/drum_audio"
+import Toast from "st/components/toast"
 import DrumMachinePage from "st/components/pages/drum_machine_page"
 
 describe("Drum patterns", () => {
@@ -378,4 +379,38 @@ describe("Drum saved-pattern controls", () => {
     }
   })
 
+})
+
+
+describe("Temporary status toasts", () => {
+  let toast, dismiss
+  beforeEach(() => {
+    jasmine.clock().install()
+    dismiss = jasmine.createSpy("dismiss")
+    toast = new Toast({message: "Saved", notificationId: 1, onDismiss: dismiss})
+    toast.componentDidMount()
+  })
+  afterEach(() => { toast.componentWillUnmount(); jasmine.clock().uninstall() })
+  it("dismisses automatically after five seconds", () => {
+    jasmine.clock().tick(4999)
+    expect(dismiss).not.toHaveBeenCalled()
+    jasmine.clock().tick(1)
+    expect(dismiss).toHaveBeenCalledTimes(1)
+  })
+  it("gives a repeated notification a fresh timer without extending it on unrelated renders", () => {
+    jasmine.clock().tick(4000)
+    const oldProps = toast.props
+    toast.props = {...oldProps, notificationId: 2}
+    toast.componentDidUpdate(oldProps)
+    jasmine.clock().tick(4000)
+    expect(dismiss).not.toHaveBeenCalled()
+    toast.componentDidUpdate({...toast.props})
+    jasmine.clock().tick(1000)
+    expect(dismiss).toHaveBeenCalledTimes(1)
+  })
+  it("cancels its dismissal timer when removed", () => {
+    toast.componentWillUnmount()
+    jasmine.clock().tick(6000)
+    expect(dismiss).not.toHaveBeenCalled()
+  })
 })

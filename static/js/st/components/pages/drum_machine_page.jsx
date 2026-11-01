@@ -1,6 +1,7 @@
 import * as React from "react"
 import {setTitle} from "st/globals"
 import DrumAudio from "st/drum_audio"
+import Toast from "st/components/toast"
 import {TRACKS, PRESETS, STORAGE_KEY, emptyPattern, validatePattern, resizePattern, readSavedPatterns, TIME_SIGNATURES, meterFor, changeTimeSignature, stepMarker} from "st/drum_patterns"
 import styles from "./drum_machine_page.module.css"
 
@@ -63,6 +64,10 @@ export default class DrumMachinePage extends React.Component {
   componentDidMount() { setTitle("Drum Machine") }
   componentWillUnmount() { this.unmounted = true; this.audio.dispose() }
 
+  notify(message, state = {}) {
+    this.setState(previous => ({...state, message, notificationId: (previous.notificationId || 0) + 1}))
+  }
+
   changePattern(pattern) {
     const restart = (this.state.playing || this.state.starting) &&
       (pattern.timeSignature !== this.state.pattern.timeSignature || pattern.bars !== this.state.pattern.bars)
@@ -98,7 +103,7 @@ export default class DrumMachinePage extends React.Component {
       if (started && !this.unmounted) this.setState({playing: true, starting: false})
     } catch {
       this.audio.stop()
-      if (!this.unmounted) this.setState({starting: false, message: "Audio could not start. Check browser audio permissions and try again."})
+      if (!this.unmounted) this.notify("Audio could not start. Check browser audio permissions and try again.", {starting: false})
     }
   }
 
@@ -132,7 +137,7 @@ export default class DrumMachinePage extends React.Component {
   save(rawName = this.state.name, pattern = this.state.pattern, state = {}) {
     const name = rawName.trim()
     const fail = message => {
-      this.setState({message, ...(this.state.dialogAction ? {dialogError: message} : {})})
+      this.notify(message, this.state.dialogAction ? {dialogError: message} : {})
       return false
     }
     if (!name) return fail("Enter a name before saving.")
@@ -153,17 +158,17 @@ export default class DrumMachinePage extends React.Component {
   persist(saved, message, state = {}) {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
-      this.setState({saved, message, ...state})
+      this.notify(message, {saved, ...state})
       return true
     } catch {
       const message = "Could not save changes. Browser storage may be full or unavailable."
-      this.setState({message, ...(this.state.dialogAction ? {dialogError: message} : {})})
+      this.notify(message, this.state.dialogAction ? {dialogError: message} : {})
       return false
     }
   }
 
   render() {
-    const {pattern, tempoInput, saved, selectedName, dialogAction, dialogName, dialogError, muted, volume, playing, starting, currentStep, message} = this.state
+    const {pattern, tempoInput, saved, selectedName, dialogAction, dialogName, dialogError, muted, volume, playing, starting, currentStep, message, notificationId} = this.state
     const meter = meterFor(pattern)
     const compound = pattern.timeSignature === "6/8"
     const steps = Array.from({length: pattern.bars * meter.steps}, (_, i) => i)
@@ -188,7 +193,7 @@ export default class DrumMachinePage extends React.Component {
           <small title="Patterns currently save on this browser; account syncing is not available yet."><a href="/login">Login</a>/<a href="/register">Register</a> to cloud save</small>
         </section>
       </header>
-      <p role="status" className={styles.message}>{message}</p>
+      <Toast message={message} notificationId={notificationId} onDismiss={() => this.setState({message: ""})} />
       <section className={styles.panel} aria-label="Playback controls">
         <div className={styles.controls}>
           <button className={`${styles.play} ${styles.iconButton}`} aria-label={playing || starting ? "Stop" : "Play"} title={playing || starting ? "Stop" : "Play"} onClick={() => this.togglePlayback()}><DrumIcon name={playing || starting ? "stop" : "play"} /></button>
