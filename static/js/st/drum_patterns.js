@@ -78,8 +78,8 @@ export function stepDuration(bpm, swing, step, timeSignature = "4/4") {
   return 60 / bpm / 4 * (step % 4 < 2 ? 1 + swing : 1 - swing)
 }
 
-function preset(name, bpm, hits, swing = 0) {
-  const pattern = emptyPattern()
+function preset(name, bpm, hits, swing = 0, timeSignature = "4/4") {
+  const pattern = emptyPattern(1, timeSignature)
   pattern.bpm = bpm
   pattern.swing = swing
   for (const [id, steps] of Object.entries(hits)) for (const step of steps) pattern.tracks[id][step] = true
@@ -98,7 +98,13 @@ export const PRESETS = [
   preset("Bossa nova", 130, {kick: [0, 6, 8, 14], snare: [0, 6, 12], closedHat: eighths}),
   preset("Half-time", 140, {kick: [0, 6, 14], snare: [8], closedHat: eighths}),
   preset("Drum and bass", 170, {kick: [0, 10], snare: [4, 12], closedHat: eighths, openHat: [7, 15]}),
-  preset("Tom fill", 110, {kick: [0, 8], snare: [4, 6], highTom: [8, 9, 10, 11], lowTom: [12, 13, 14, 15]})
+  preset("Tom fill", 110, {kick: [0, 8], snare: [4, 6], highTom: [8, 9, 10, 11], lowTom: [12, 13, 14, 15]}),
+  preset("Waltz", 100, {kick: [0], snare: [4, 8], closedHat: [0, 2, 4, 6, 8, 10]}, 0, "3/4"),
+  preset("Jazz waltz", 135, {kick: [0], snare: [8], ride: [0, 4, 6, 8, 10]}, 0.33, "3/4"),
+  preset("Five-beat rock", 110, {kick: [0, 8, 12], snare: [4, 16], closedHat: [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]}, 0, "5/4"),
+  preset("Five-beat jazz", 125, {kick: [0, 12], snare: [8, 16], ride: [0, 4, 6, 8, 12, 16, 18]}, 0.2, "5/4"),
+  preset("Slow six", 65, {kick: [0], snare: [6], closedHat: [0, 2, 4, 6, 8, 10]}, 0, "6/8"),
+  preset("Celtic jig", 110, {kick: [0, 6], snare: [4, 10], closedHat: [0, 2, 4, 6, 8, 10], lowTom: [8], highTom: [2]}, 0, "6/8")
 ]
 
 export function readSavedPatterns(storage) {

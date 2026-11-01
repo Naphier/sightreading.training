@@ -11,6 +11,8 @@ function DrumIcon({name}) {
     {name === "play" && <path fill="currentColor" stroke="none" d="M7 4v16l14-8z" />}
     {name === "stop" && <rect fill="currentColor" stroke="none" x="5" y="5" width="14" height="14" rx="1" />}
     {name === "volume" && <><path d="M11 4 6 8H3v8h3l5 4zM15 8a6 6 0 0 1 0 8M18 4a11 11 0 0 1 0 16" /></>}
+    {name === "save" && <><path d="M5 3h12l4 4v14H3V3zM7 3v6h10V3M7 21v-8h10v8M14 5v2" /></>}
+    {name === "plus" && <path d="M12 5v14M5 12h14" />}
     {name === "trash" && <><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></>}
   </svg>
 }
@@ -21,7 +23,7 @@ export default class DrumMachinePage extends React.Component {
     let saved = [], message = ""
     try { saved = readSavedPatterns(window.localStorage) }
     catch { message = "Saved patterns could not be read. You can still create and play beats." }
-    this.state = {pattern: validatePattern(PRESETS[0].pattern), tempoInput: String(PRESETS[0].pattern.bpm), saved, name: "My beat", muted: {}, volume: 0.7, playing: false, starting: false, currentStep: -1, message}
+    this.state = {pattern: validatePattern(PRESETS[0].pattern), tempoInput: String(PRESETS[0].pattern.bpm), saved, selectedName: "", name: "My beat", muted: {}, volume: 0.7, playing: false, starting: false, currentStep: -1, message}
     this.tagline = TAGLINES[Math.floor(Math.random() * TAGLINES.length)]
     this.audio = new DrumAudio(currentStep => this.setState({currentStep}))
   }
@@ -68,32 +70,70 @@ export default class DrumMachinePage extends React.Component {
     }
   }
 
+  newPattern() {
+    const {pattern, saved} = this.state
+    let name = "My beat", suffix = 2
+    while (saved.some(item => item.name === name)) name = `My beat ${suffix++}`
+    this.changePattern({...emptyPattern(pattern.bars, pattern.timeSignature), bpm: pattern.bpm, swing: pattern.swing})
+    this.setState({selectedName: "", name, message: "New pattern. Add some hits and save it with a name."})
+  }
+
+  loadSaved(name) {
+    const item = this.state.saved.find(item => item.name === name)
+    if (!item) return
+    this.changePattern(validatePattern(item.pattern))
+    this.setState({selectedName: name, name, message: ""})
+  }
+
   save() {
     const name = this.state.name.trim()
     if (!name) { this.setState({message: "Enter a name before saving."}); return }
+    if (name.length > 60) { this.setState({message: "Use a name of 60 characters or fewer."}); return }
     if (this.state.saved.length >= 100 && !this.state.saved.some(item => item.name === name)) {
       this.setState({message: "You can save up to 100 patterns. Delete one to make room."}); return
     }
     const saved = [...this.state.saved.filter(item => item.name !== name), {name, pattern: validatePattern(this.state.pattern)}]
-    this.persist(saved, `Saved “${name}” on this browser.`)
+    this.persist(saved, `Saved “${name}” on this browser.`, {selectedName: name, name})
   }
 
-  persist(saved, message) {
+  deleteSelected() {
+    const {selectedName, saved} = this.state
+    if (!selectedName) return
+    this.persist(saved.filter(item => item.name !== selectedName), `Deleted “${selectedName}”. The current beat is still available to edit.`, {selectedName: ""})
+  }
+
+  persist(saved, message, state = {}) {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
-      this.setState({saved, message})
+      this.setState({saved, message, ...state})
     } catch { this.setState({message: "Could not save changes. Browser storage may be full or unavailable."}) }
   }
 
   render() {
-    const {pattern, tempoInput, saved, name, muted, volume, playing, starting, currentStep, message} = this.state
+    const {pattern, tempoInput, saved, selectedName, name, muted, volume, playing, starting, currentStep, message} = this.state
     const meter = meterFor(pattern)
     const compound = pattern.timeSignature === "6/8"
     const steps = Array.from({length: pattern.bars * meter.steps}, (_, i) => i)
     return <main className={styles.page}>
       <header className={styles.heading}>
         <div><h1>Drum Machine</h1><p>{this.tagline}</p></div>
+        <section className={styles.patternManager} aria-label="Saved patterns">
+          <form className={styles.patternTools} onSubmit={e => { e.preventDefault(); this.save() }}>
+            <label className={styles.patternPicker}>Your patterns
+              <select aria-label="Your patterns" value={selectedName} onChange={e => this.loadSaved(e.target.value)}>
+                <option value="" disabled>{saved.length ? "Unsaved pattern" : "No saved patterns yet"}</option>
+                {saved.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
+              </select>
+            </label>
+            <button type="submit" className={styles.iconButton} aria-label="Save pattern" title="Save pattern (an existing name replaces that saved pattern)"><DrumIcon name="save" /></button>
+            <button type="button" className={styles.iconButton} aria-label="New pattern" title="New pattern" onClick={() => this.newPattern()}><DrumIcon name="plus" /></button>
+            <button type="button" className={styles.iconButton} aria-label="Delete saved pattern" title="Delete selected saved pattern" disabled={!selectedName} onClick={() => this.deleteSelected()}><DrumIcon name="trash" /></button>
+            {!selectedName && <input className={styles.patternName} aria-label="Pattern name" placeholder="Pattern name" maxLength="60" value={name} onChange={e => this.setState({name: e.target.value})} />}
+          </form>
+          <small>Saved on this browser.</small>
+        </section>
       </header>
+      <p role="status" className={styles.message}>{message}</p>
       <section className={styles.panel} aria-label="Playback controls">
         <div className={styles.controls}>
           <button className={`${styles.play} ${styles.iconButton}`} aria-label={playing || starting ? "Stop" : "Play"} title={playing || starting ? "Stop" : "Play"} onClick={() => this.togglePlayback()}><DrumIcon name={playing || starting ? "stop" : "play"} /></button>
@@ -143,26 +183,12 @@ export default class DrumMachinePage extends React.Component {
           </table>
         </div>
       </section>
-      <div className={styles.library}>
-        <section className={styles.panel} aria-label="Preset patterns"><h2>Start with a groove</h2>
-          <p>Load a preset, then edit any step. Presets also set time signature, tempo, and swing.</p>
-          <div className={styles.presets}>{PRESETS.map(preset => <button key={preset.name} onClick={() => {
-            this.changePattern(validatePattern(preset.pattern)); this.setState({name: `${preset.name} variation`})
-          }}>{preset.name}<small>{preset.pattern.bpm} BPM</small></button>)}</div>
-        </section>
-        <section className={styles.panel} aria-label="Saved patterns"><h2>Your patterns</h2>
-          <p>Saved on this browser. Reusing a name replaces that saved pattern.</p>
-          <form className={styles.save} onSubmit={e => { e.preventDefault(); this.save() }}>
-            <label>Pattern name<input maxLength="60" value={name} onChange={e => this.setState({name: e.target.value})} /></label>
-            <button type="submit">Save pattern</button>
-          </form>
-          {saved.length === 0 ? <p>No saved patterns yet.</p> : <ul className={styles.saved}>{saved.map(item => <li key={item.name}>
-            <button onClick={() => { this.changePattern(validatePattern(item.pattern)); this.setState({name: item.name}) }}>{item.name}</button>
-            <button aria-label={`Delete ${item.name}`} onClick={() => this.persist(saved.filter(p => p.name !== item.name), `Deleted “${item.name}”.`)}>Delete</button>
-          </li>)}</ul>}
-          <p role="status" className={styles.message}>{message}</p>
-        </section>
-      </div>
+      <section className={styles.panel} aria-label="Preset patterns"><h2>Start with a groove</h2>
+        <p>Load a preset, then edit any step. Presets also set time signature, tempo, and swing.</p>
+        <div className={styles.presets}>{PRESETS.map(preset => <button key={preset.name} onClick={() => {
+          this.changePattern(validatePattern(preset.pattern)); this.setState({selectedName: "", name: `${preset.name} variation`, message: ""})
+        }}>{preset.name}<small>{preset.pattern.timeSignature} · {preset.pattern.bpm} BPM</small></button>)}</div>
+      </section>
     </main>
   }
 }

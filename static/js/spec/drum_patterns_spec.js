@@ -3,8 +3,8 @@ import DrumAudio from "st/drum_audio"
 import DrumMachinePage from "st/components/pages/drum_machine_page"
 
 describe("Drum patterns", () => {
-  it("provides twelve independently editable, valid presets", () => {
-    expect(PRESETS.length).toBe(12)
+  it("provides eighteen independently editable, valid presets", () => {
+    expect(PRESETS.length).toBe(18)
     for (const preset of PRESETS) {
       const pattern = validatePattern(preset.pattern)
       expect(Object.keys(pattern.tracks).length).toBe(TRACKS.length)
@@ -219,5 +219,94 @@ describe("Drum time signatures", () => {
         } finally { audio.stop() }
       }
     } finally { jasmine.clock().uninstall() }
+  })
+})
+
+
+describe("Drum preset coverage", () => {
+  it("provides two distinct playable grooves in each new meter", () => {
+    for (const signature of ["3/4", "5/4", "6/8"]) {
+      const presets = PRESETS.filter(item => item.pattern.timeSignature === signature)
+      expect(presets.length).toBe(2)
+      expect(presets[0].pattern.tracks).not.toEqual(presets[1].pattern.tracks)
+      for (const {pattern} of presets) {
+        expect(validatePattern(pattern)).toEqual(pattern)
+        expect(pattern.tracks.kick.some(Boolean)).toBeTrue()
+        expect(pattern.tracks.snare.some(Boolean)).toBeTrue()
+      }
+    }
+  })
+})
+
+describe("Drum saved-pattern controls", () => {
+  let page, storage
+  beforeEach(() => {
+    storage = {getItem: () => null, setItem: jasmine.createSpy("setItem")}
+    spyOnProperty(window, "localStorage", "get").and.returnValue(storage)
+    page = new DrumMachinePage({})
+    page.setState = (update, callback) => {
+      Object.assign(page.state, typeof update === "function" ? update(page.state) : update)
+      if (callback) callback()
+    }
+  })
+  it("saves a new pattern, selects it, and overwrites it without duplicating the entry", () => {
+    page.changePattern(emptyPattern(1, "5/4"))
+    page.state.name = "Five alive"
+    page.save()
+    expect(page.state.selectedName).toBe("Five alive")
+    page.state.pattern.tracks.kick[19] = true
+    page.save()
+    const saved = JSON.parse(storage.setItem.calls.mostRecent().args[1])
+    expect(saved.length).toBe(1)
+    expect(saved[0].pattern.timeSignature).toBe("5/4")
+    expect(saved[0].pattern.tracks.kick[19]).toBeTrue()
+  })
+  it("loads a selected pattern including its meter without editing the stored copy", () => {
+    page.state.saved = [{name: "Six", pattern: emptyPattern(2, "6/8")}]
+    page.loadSaved("Six")
+    expect(page.state.selectedName).toBe("Six")
+    expect(page.state.pattern.timeSignature).toBe("6/8")
+    expect(page.state.pattern.bars).toBe(2)
+    page.state.pattern.tracks.kick[0] = true
+    expect(page.state.saved[0].pattern.tracks.kick[0]).toBeFalse()
+  })
+  it("creates a blank draft with a unique name and retains meter, length, tempo, and swing", () => {
+    page.state.saved = [{name: "My beat", pattern: emptyPattern()}]
+    page.state.selectedName = "My beat"
+    const pattern = emptyPattern(2, "3/4")
+    pattern.bpm = 135
+    pattern.swing = 0.2
+    pattern.tracks.snare[0] = true
+    page.changePattern(pattern)
+    page.newPattern()
+    expect(page.state.selectedName).toBe("")
+    expect(page.state.name).toBe("My beat 2")
+    expect(page.state.pattern).toEqual({...emptyPattern(2, "3/4"), bpm: 135, swing: 0.2})
+    expect(storage.setItem).not.toHaveBeenCalled()
+    expect(page.state.saved.length).toBe(1)
+  })
+  it("deletes only the selected save and preserves the editable beat", () => {
+    page.state.saved = [{name: "A", pattern: emptyPattern()}, {name: "B", pattern: emptyPattern(1, "6/8")}]
+    page.loadSaved("B")
+    const pattern = page.state.pattern
+    page.deleteSelected()
+    expect(page.state.saved.map(item => item.name)).toEqual(["A"])
+    expect(page.state.selectedName).toBe("")
+    expect(page.state.pattern).toBe(pattern)
+    expect(JSON.parse(storage.setItem.calls.mostRecent().args[1]).length).toBe(1)
+  })
+  it("keeps selection and saved data unchanged if saving or deleting fails", () => {
+    page.state.saved = [{name: "A", pattern: emptyPattern()}]
+    page.loadSaved("A")
+    const saved = page.state.saved
+    storage.setItem.and.throwError("Storage full")
+    page.deleteSelected()
+    expect(page.state.selectedName).toBe("A")
+    expect(page.state.saved).toBe(saved)
+    expect(page.state.message).toContain("Could not save")
+    page.newPattern()
+    page.save()
+    expect(page.state.selectedName).toBe("")
+    expect(page.state.saved).toBe(saved)
   })
 })

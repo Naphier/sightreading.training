@@ -1,12 +1,12 @@
-.page { max-width: 1200px; margin: 0 auto; padding: 28px 20px 50px; }
-.heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
+.page { box-sizing: border-box; width: 100%; max-width: 1040px; margin: 0 auto; padding: 28px 20px 50px; }
+.heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
 .heading h1 { margin: 0 0 8px; }
 .heading p { margin: 0; }
 .panel { background: #fff; border: 1px solid #ccc; border-radius: 10px; padding: 20px; margin-bottom: 20px; min-width: 0; }
 .panel h2 { font-size: 19px; margin: 0 0 14px; }
 .panel p { font-size: 14px; line-height: 1.5; }
-.controls { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
-.controls label, .save label { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.controls { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.controls label { display: flex; gap: 8px; align-items: center; font-size: 14px; }
 .controls input[type=number] { width: 64px; }
 .controls input[type=range] { width: 100px; }
 .page input, .page select { padding: 6px; font: inherit; }
@@ -30,16 +30,16 @@
 .grid .playhead { background: #c9e9bc; }
 .grid .playhead .step { box-shadow: 0 0 0 2px #48863b; }
 .grid button.muted { opacity: 0.6; text-decoration: line-through; }
-.library { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.presets button { text-align: left; padding: 10px; }
+.presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.presets button { overflow-wrap: anywhere; text-align: left; padding: 10px; }
 .presets small { display: block; font-weight: normal; margin-top: 5px; }
-.save { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
-.save label { flex: 1; flex-direction: column; align-items: stretch; }
-.save input { min-width: 0; }
-.saved { padding: 0; list-style: none; max-height: 280px; overflow-y: auto; }
-.saved li { display: flex; gap: 10px; margin: 8px 0; }
-.saved li button:first-child { flex: 1; text-align: left; overflow-wrap: anywhere; }
-.message { min-height: 22px; }
-@media (max-width: 800px) { .library { grid-template-columns: 1fr; gap: 0; } .heading { align-items: flex-start; flex-direction: column; } }
+.patternManager { width: 420px; max-width: 100%; min-width: 0; text-align: right; }
+.patternManager small { display: block; margin-top: 6px; color: #555; font-size: 12px; }
+.patternTools { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: 8px; }
+.patternPicker { display: flex; flex: 1; min-width: 100px; flex-direction: column; gap: 6px; text-align: left; font-size: 13px; }
+.patternPicker select { width: 100%; min-width: 0; box-sizing: border-box; height: 44px; text-overflow: ellipsis; }
+.patternName { box-sizing: border-box; width: 100%; min-width: 0; }
+.message { margin: 0 0 12px; font-size: 14px; }
+.message:empty { margin: 0; }
+@media (max-width: 800px) { .heading { align-items: flex-start; flex-direction: column; } .patternManager { align-self: flex-end; } }
 @media (max-width: 450px) { .page { padding: 20px 10px; } .panel { padding: 12px; } .presets { grid-template-columns: repeat(2, 1fr); } }
