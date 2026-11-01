@@ -38,7 +38,7 @@ class PatternNameDialog extends React.Component {
       <form onSubmit={e => { e.preventDefault(); onSubmit() }}>
         <h2 id="pattern-dialog-title">{action === "new" ? "New pattern" : "Save pattern"}</h2>
         <label>Pattern name<input ref={this.input} aria-label="Pattern name" aria-describedby="pattern-dialog-help" maxLength="60" required value={name} onChange={e => onChange(e.target.value)} /></label>
-        <p id="pattern-dialog-help">{action === "new" ? "Create a blank pattern with your current tempo and time signature." : "Saving an existing name replaces that saved pattern."}</p>
+        <p id="pattern-dialog-help">{action === "new" ? "Save the current beat as a new named pattern." : "Saving an existing name replaces that saved pattern."}</p>
         {error && <p role="alert">{error}</p>}
         <div className={styles.dialogActions}>
           <button type="button" onClick={onCancel}>Cancel</button>
@@ -126,8 +126,7 @@ export default class DrumMachinePage extends React.Component {
       this.setState({dialogError: "A pattern with this name already exists. Choose another name."})
       return
     }
-    const next = dialogAction === "new" ? {...emptyPattern(pattern.bars, pattern.timeSignature), bpm: pattern.bpm, swing: pattern.swing} : pattern
-    if (this.save(dialogName, next, {dialogAction: null, dialogError: ""}) && dialogAction === "new") this.changePattern(next)
+    this.save(dialogName, pattern, {dialogAction: null, dialogError: ""})
   }
 
   save(rawName = this.state.name, pattern = this.state.pattern, state = {}) {
@@ -183,7 +182,7 @@ export default class DrumMachinePage extends React.Component {
               </select>
             </label>
             <button type="button" className={styles.iconButton} aria-label="Save pattern" title="Save pattern" onClick={() => this.openSaveDialog()}><DrumIcon name="save" /></button>
-            <button type="button" className={styles.iconButton} aria-label="New pattern" title="New pattern" onClick={() => this.newPattern()}><DrumIcon name="plus" /></button>
+            <button type="button" className={styles.iconButton} aria-label="New pattern" title="Save current beat as a new pattern" onClick={() => this.newPattern()}><DrumIcon name="plus" /></button>
             <button type="button" className={styles.iconButton} aria-label="Delete saved pattern" title="Delete selected saved pattern" disabled={!selectedName} onClick={() => this.deleteSelected()}><DrumIcon name="trash" /></button>
           </div>
           <small title="Patterns currently save on this browser; account syncing is not available yet."><a href="/login">Login</a>/<a href="/register">Register</a> to cloud save</small>

@@ -270,7 +270,7 @@ describe("Drum saved-pattern controls", () => {
     page.state.pattern.tracks.kick[0] = true
     expect(page.state.saved[0].pattern.tracks.kick[0]).toBeFalse()
   })
-  it("names a new blank pattern in a dialog before saving and selecting it", () => {
+  it("names a new copy in a dialog without clearing the current beat", () => {
     page.state.saved = [{name: "My beat", pattern: emptyPattern()}]
     page.state.selectedName = "My beat"
     const pattern = emptyPattern(2, "3/4")
@@ -287,7 +287,9 @@ describe("Drum saved-pattern controls", () => {
     page.submitPatternName()
     expect(page.state.selectedName).toBe("My beat 2")
     expect(page.state.dialogAction).toBeNull()
-    expect(page.state.pattern).toEqual({...emptyPattern(2, "3/4"), bpm: 135, swing: 0.2})
+    expect(page.state.pattern).toBe(pattern)
+    expect(page.state.saved[1].pattern).toEqual(pattern)
+    expect(page.state.saved[1].pattern.tracks.snare[0]).toBeTrue()
     expect(page.state.saved.length).toBe(2)
   })
   it("deletes only the selected save and preserves the editable beat", () => {
@@ -344,6 +346,36 @@ describe("Drum saved-pattern controls", () => {
     expect(page.state.dialogError).toContain("already exists")
     expect(storage.setItem).not.toHaveBeenCalled()
     expect(page.state.saved.length).toBe(1)
+  })
+
+  it("preserves edited hits and playback when saving through either naming dialog", () => {
+    for (const action of ["save", "new"]) {
+      for (const signature of ["4/4", "3/4", "5/4", "6/8"]) {
+        const pattern = emptyPattern(2, signature)
+        pattern.tracks.kick[0] = true
+        pattern.tracks.snare[pattern.tracks.snare.length - 1] = true
+        pattern.bpm = 123
+        pattern.swing = 0.2
+        page.changePattern(pattern)
+        page.state.playing = true
+        page.state.currentStep = 5
+        const stop = spyOn(page.audio, "stop")
+        if (action === "new") page.newPattern()
+        else page.openSaveDialog()
+        expect(page.state.pattern).toBe(pattern)
+        page.state.dialogName = `${action} ${signature}`
+        page.submitPatternName()
+        expect(page.state.pattern).toBe(pattern)
+        expect(page.state.playing).toBeTrue()
+        expect(page.state.currentStep).toBe(5)
+        expect(stop).not.toHaveBeenCalled()
+        expect(page.state.saved.find(item => item.name === `${action} ${signature}`).pattern).toEqual(pattern)
+        const stored = JSON.parse(storage.setItem.calls.mostRecent().args[1])
+        expect(stored.find(item => item.name === `${action} ${signature}`).pattern).toEqual(pattern)
+        page.audio.stop = stop.and.originalFn
+        page.state.playing = false
+      }
+    }
   })
 
 })
