@@ -49,7 +49,8 @@ export default function FeedbackPage() {
     setError("")
     try {
       const result = await request(`/feedback.json?q=${encodeURIComponent(searchQuery)}`, null, abort.signal)
-      setIssues(result.issues || [])
+      if (abort.signal.aborted) return
+      setIssues(Array.isArray(result.issues) ? result.issues : [])
       setThreshold(result.threshold)
       setSearched(searchQuery.trim() ? searchQuery : null)
     } catch (e) {
