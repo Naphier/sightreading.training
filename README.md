@@ -129,3 +129,18 @@ The script checks an image-only marker before changing PostgreSQL configuration.
 It discovers MoonScript specs once, excluding their generated Lua copies. The CI
 image uses Debian PostgreSQL 15; the private runtime integration also checks the
 production PostgreSQL 17 stack.
+
+## Adding practice tools
+
+Follow the [new-tool playbook](docs/adding-tools.md) for routes, navigation,
+state persistence, audio lifecycle, accessibility, verification, and PR previews.
+
+### Drum Machine
+
+Open **Drum Machine** in the navigation or visit `/drum-machine`. Toggle hits across
+eight synthesized percussion tracks, mute instruments, set 30–240 BPM, and add
+sixteenth-note swing. Patterns use 4/4 with one or two bars; extending repeats the
+first bar. Twelve editable presets cover rock, funk, blues, hip-hop, dance, and more.
+Save up to 100 named patterns on the current browser; saving the same name replaces
+it. These patterns are local and do not sync to accounts. Playback uses Web Audio
+and stops when leaving the page. No external drum samples or MIDI setup are needed.

@@ -20,3 +20,9 @@
   Production database files must live in persistent storage across deployments.
 - Git push and repository API access do not prove Codespaces access. Check the
   specific API permission and report any denial. Never ask for tokens in chat.
+
+# Adding site tools
+
+- Follow `docs/adding-tools.md` when adding an instrument, practice aid, or exercise.
+  It covers route/navigation integration, persistence, audio cleanup, accessibility,
+  tests, and preview expectations.
