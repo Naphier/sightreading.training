@@ -1,4 +1,4 @@
-import {TRACKS, stepDuration} from "./drum_patterns"
+import {TRACKS, stepDuration, meterFor} from "./drum_patterns"
 
 // Schedule against the audio clock, independently of React renders.
 export default class DrumAudio {
@@ -29,13 +29,13 @@ export default class DrumAudio {
       // Skip missed time after browser throttling instead of bursting queued hits.
       if (this.nextTime < now) this.nextTime = now + 0.02
       while (this.nextTime < now + 0.1) {
-        this.step %= pattern.bars * 16
+        this.step %= pattern.bars * meterFor(pattern).steps
         const step = this.step
         for (const [id] of TRACKS) {
           if (pattern.tracks[id][step] && !getMuted()[id]) this.hit(id, this.nextTime)
         }
         this.pending.push({step, time: this.nextTime})
-        this.nextTime += stepDuration(pattern.bpm, pattern.swing, step)
+        this.nextTime += stepDuration(pattern.bpm, pattern.swing, step, pattern.timeSignature)
         this.step++
       }
     }

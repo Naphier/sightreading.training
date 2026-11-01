@@ -5,19 +5,56 @@ export const TRACKS = [
 ]
 export const STORAGE_KEY = "drum-machine:patterns:v1"
 
-export function emptyPattern(bars = 1) {
-  return {bars, bpm: 100, swing: 0, tracks: Object.fromEntries(TRACKS.map(([id]) => [id, Array(bars * 16).fill(false)]))}
+export const TIME_SIGNATURES = {
+  "4/4": {steps: 16, beatSteps: 4},
+  "3/4": {steps: 12, beatSteps: 4},
+  "5/4": {steps: 20, beatSteps: 4},
+  "6/8": {steps: 12, beatSteps: 6}
+}
+
+export function meterFor(pattern) { return TIME_SIGNATURES[pattern.timeSignature || "4/4"] }
+
+export function emptyPattern(bars = 1, timeSignature = "4/4") {
+  return {bars, timeSignature, bpm: 100, swing: 0, tracks: Object.fromEntries(TRACKS.map(([id]) => [id, Array(bars * TIME_SIGNATURES[timeSignature].steps).fill(false)]))}
+}
+
+// Keep each bar's existing hits; newly added beats start silent.
+export function changeTimeSignature(pattern, timeSignature) {
+  const next = {...pattern, timeSignature, tracks: {}}
+  const oldSteps = meterFor(pattern).steps
+  const newSteps = TIME_SIGNATURES[timeSignature].steps
+  for (const [id] of TRACKS) {
+    next.tracks[id] = Array.from({length: pattern.bars * newSteps}, (_, i) => {
+      const step = i % newSteps
+      return step < oldSteps ? pattern.tracks[id][Math.floor(i / newSteps) * oldSteps + step] : false
+    })
+  }
+  return next
+}
+
+export function stepMarker(pattern, step) {
+  const {steps, beatSteps} = meterFor(pattern)
+  const local = step % steps
+  const bar = Math.floor(step / steps) + 1
+  if (pattern.timeSignature === "6/8") {
+    return {label: local % 2 === 0 ? `${bar}.${local / 2 + 1}` : "&",
+      size: local % beatSteps === 0 ? "quarter" : local % 2 === 0 ? "eighth" : "sixteenth"}
+  }
+  return {label: local % 4 === 0 ? `${bar}.${local / 4 + 1}` : ["", "e", "&", "a"][local % 4],
+    size: local % 4 === 0 ? "quarter" : local % 2 === 0 ? "eighth" : "sixteenth"}
 }
 
 export function validatePattern(value) {
   if (!value || ![1, 2].includes(value.bars) || !Number.isFinite(value.bpm) || value.bpm < 30 || value.bpm > 240 ||
       !Number.isFinite(value.swing) || value.swing < 0 || value.swing > 0.5) throw new Error("Invalid drum pattern")
-  const pattern = emptyPattern(value.bars)
+  const timeSignature = value.timeSignature === undefined ? "4/4" : value.timeSignature
+  if (typeof timeSignature !== "string" || !Object.hasOwn(TIME_SIGNATURES, timeSignature)) throw new Error("Invalid time signature")
+  const pattern = emptyPattern(value.bars, timeSignature)
   pattern.bpm = value.bpm
   pattern.swing = value.swing
   for (const [id] of TRACKS) {
     const steps = value.tracks?.[id]
-    if (!Array.isArray(steps) || steps.length !== value.bars * 16 || steps.some(step => typeof step !== "boolean")) {
+    if (!Array.isArray(steps) || steps.length !== value.bars * meterFor(pattern).steps || steps.some(step => typeof step !== "boolean")) {
       throw new Error("Invalid drum steps")
     }
     pattern.tracks[id] = [...steps]
@@ -28,14 +65,16 @@ export function validatePattern(value) {
 export function resizePattern(pattern, bars) {
   const next = {...pattern, bars, tracks: {}}
   for (const [id] of TRACKS) {
-    next.tracks[id] = Array.from({length: bars * 16}, (_, i) => pattern.tracks[id][i % pattern.tracks[id].length])
+    next.tracks[id] = Array.from({length: bars * meterFor(pattern).steps}, (_, i) => pattern.tracks[id][i % pattern.tracks[id].length])
   }
   return next
 }
 
 // Swing delays the offbeat eighth (&), keeping sixteenths evenly spaced
 // within each eighth. Each quarter note retains its original duration.
-export function stepDuration(bpm, swing, step) {
+export function stepDuration(bpm, swing, step, timeSignature = "4/4") {
+  // In compound time BPM counts dotted quarters. Keep the natural triplets straight.
+  if (timeSignature === "6/8") return 60 / bpm / 6
   return 60 / bpm / 4 * (step % 4 < 2 ? 1 + swing : 1 - swing)
 }
 

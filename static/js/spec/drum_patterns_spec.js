@@ -1,4 +1,4 @@
-import {TRACKS, PRESETS, STORAGE_KEY, emptyPattern, validatePattern, resizePattern, readSavedPatterns, stepDuration} from "st/drum_patterns"
+import {TRACKS, PRESETS, STORAGE_KEY, emptyPattern, validatePattern, resizePattern, readSavedPatterns, stepDuration, TIME_SIGNATURES, changeTimeSignature, stepMarker} from "st/drum_patterns"
 import DrumAudio from "st/drum_audio"
 import DrumMachinePage from "st/components/pages/drum_machine_page"
 
@@ -28,7 +28,7 @@ describe("Drum patterns", () => {
     }
   })
   it("rejects corrupt or unsafe persisted values", () => {
-    for (const patch of [{bpm: 0}, {bpm: Infinity}, {swing: -1}, {bars: 8}, {tracks: {}}]) {
+    for (const patch of [{bpm: 0}, {bpm: Infinity}, {swing: -1}, {bars: 8}, {tracks: {}}, {timeSignature: "7/8"}, {timeSignature: ["4/4"]}, {timeSignature: "3/4"}]) {
       expect(() => validatePattern({...emptyPattern(), ...patch})).toThrow()
     }
     expect(() => readSavedPatterns({getItem: () => "{}"})).toThrow()
@@ -89,7 +89,10 @@ describe("Drum tempo editing", () => {
   beforeEach(() => {
     page = new DrumMachinePage({})
     // Exercise the component's state transitions without mounting an audio page.
-    page.setState = update => Object.assign(page.state, typeof update === "function" ? update(page.state) : update)
+    page.setState = (update, callback) => {
+      Object.assign(page.state, typeof update === "function" ? update(page.state) : update)
+      if (callback) callback()
+    }
   })
   it("allows clearing and typing a replacement tempo while playback retains a valid BPM", () => {
     for (const value of ["", "1", "12"]) {
@@ -110,9 +113,111 @@ describe("Drum tempo editing", () => {
       expect(page.state.tempoInput).toBe(String(expected))
     }
   })
+  it("restarts playback at the beginning when changing time signature", () => {
+    page.state.playing = true
+    page.state.currentStep = 15
+    spyOn(page.audio, "stop")
+    spyOn(page, "togglePlayback")
+    page.changePattern(changeTimeSignature(page.state.pattern, "3/4"))
+    expect(page.audio.stop).toHaveBeenCalled()
+    expect(page.state.currentStep).toBe(-1)
+    expect(page.state.pattern.timeSignature).toBe("3/4")
+    expect(page.togglePlayback).toHaveBeenCalled()
+  })
   it("updates the tempo field when loading another pattern", () => {
     page.changeTempo("")
     page.changePattern(validatePattern(PRESETS[1].pattern))
     expect(page.state.tempoInput).toBe(String(PRESETS[1].pattern.bpm))
+  })
+})
+
+
+describe("Drum time signatures", () => {
+  it("builds and round trips one- and two-bar patterns in every meter", () => {
+    for (const [signature, meter] of Object.entries(TIME_SIGNATURES)) for (const bars of [1, 2]) {
+      const pattern = emptyPattern(bars, signature)
+      pattern.tracks.kick[pattern.tracks.kick.length - 1] = true
+      expect(pattern.tracks.kick.length).toBe(meter.steps * bars)
+      expect(validatePattern(pattern)).toEqual(pattern)
+      const saved = [{name: signature, pattern}]
+      expect(readSavedPatterns({getItem: () => JSON.stringify(saved)})).toEqual(saved)
+    }
+  })
+  it("loads legacy saved patterns as 4/4 without changing their hits", () => {
+    const legacy = validatePattern(PRESETS[0].pattern)
+    delete legacy.timeSignature
+    const [saved] = readSavedPatterns({getItem: () => JSON.stringify([{name: "Old beat", pattern: legacy}])})
+    expect(saved.pattern.timeSignature).toBe("4/4")
+    expect(saved.pattern.tracks).toEqual(legacy.tracks)
+  })
+  it("changes meters per bar without shifting the second bar's hits", () => {
+    const pattern = emptyPattern(2)
+    pattern.tracks.kick[0] = true
+    pattern.tracks.kick[16] = true
+    pattern.tracks.snare[15] = true
+    pattern.tracks.snare[31] = true
+    const longer = changeTimeSignature(pattern, "5/4")
+    expect(longer.tracks.kick[20]).toBeTrue()
+    expect(longer.tracks.snare[35]).toBeTrue()
+    expect(longer.tracks.snare.slice(16, 20)).toEqual([false, false, false, false])
+    const shorter = changeTimeSignature(longer, "3/4")
+    expect(shorter.tracks.kick[12]).toBeTrue()
+    expect(shorter.tracks.snare.every(hit => !hit)).toBeTrue()
+    expect(pattern.tracks.snare[15]).toBeTrue()
+  })
+  it("repeats and shortens bars correctly in every meter", () => {
+    for (const signature of Object.keys(TIME_SIGNATURES)) {
+      const pattern = emptyPattern(1, signature)
+      pattern.tracks.kick[0] = true
+      const extended = resizePattern(pattern, 2)
+      expect(extended.tracks.kick).toEqual([...pattern.tracks.kick, ...pattern.tracks.kick])
+      expect(resizePattern(extended, 1)).toEqual(pattern)
+    }
+  })
+  it("keeps bar timing constant with swing and uses two dotted quarters for 6/8", () => {
+    for (const [signature, meter] of Object.entries(TIME_SIGNATURES)) {
+      for (const bpm of [30, 100, 240]) for (const swing of [0, 0.33, 0.5]) {
+        const durations = Array.from({length: meter.steps}, (_, i) => stepDuration(bpm, swing, i, signature))
+        expect(durations.reduce((a, b) => a + b)).toBeCloseTo(meter.steps / meter.beatSteps * 60 / bpm, 8)
+        if (signature === "6/8") expect(new Set(durations).size).toBe(1)
+      }
+    }
+  })
+  it("labels bar boundaries and compound beat groups", () => {
+    expect(stepMarker(emptyPattern(2, "3/4"), 12)).toEqual({label: "2.1", size: "quarter"})
+    expect(stepMarker(emptyPattern(1, "5/4"), 16)).toEqual({label: "1.5", size: "quarter"})
+    expect(stepMarker(emptyPattern(), 2)).toEqual({label: "&", size: "eighth"})
+    expect(stepMarker(emptyPattern(), 3)).toEqual({label: "a", size: "sixteenth"})
+    expect(stepMarker(emptyPattern(1, "6/8"), 6)).toEqual({label: "1.4", size: "quarter"})
+  })
+  it("loops the audio scheduler at each meter's actual bar boundary", async () => {
+    jasmine.clock().install()
+    spyOn(window, "requestAnimationFrame").and.returnValue(1)
+    spyOn(window, "cancelAnimationFrame")
+    try {
+      for (const [signature, meter] of Object.entries(TIME_SIGNATURES)) for (const bars of [1, 2]) {
+        const audio = new DrumAudio(() => {})
+        audio.context = {
+          currentTime: 0, sampleRate: 1, resume: async () => {},
+          createGain: () => ({gain: {}, connect() {}, disconnect() {}}),
+          createBuffer: () => ({getChannelData: () => new Float32Array(1)})
+        }
+        const hits = []
+        audio.hit = (id, time) => hits.push(time)
+        const pattern = emptyPattern(bars, signature)
+        pattern.bpm = 120
+        pattern.tracks.kick[0] = true
+        const loopSeconds = bars * meter.steps / meter.beatSteps * 0.5
+        try {
+          await audio.start(() => pattern, () => ({}), 0.7)
+          for (let tick = 0; tick < Math.ceil((loopSeconds + 0.1) / 0.025); tick++) {
+            audio.context.currentTime += 0.025
+            jasmine.clock().tick(25)
+          }
+          expect(hits.length).toBe(2)
+          expect(hits[1] - hits[0]).toBeCloseTo(loopSeconds, 8)
+        } finally { audio.stop() }
+      }
+    } finally { jasmine.clock().uninstall() }
   })
 })
