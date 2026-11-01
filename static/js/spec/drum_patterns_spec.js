@@ -270,7 +270,7 @@ describe("Drum saved-pattern controls", () => {
     page.state.pattern.tracks.kick[0] = true
     expect(page.state.saved[0].pattern.tracks.kick[0]).toBeFalse()
   })
-  it("creates a blank draft with a unique name and retains meter, length, tempo, and swing", () => {
+  it("names a new blank pattern in a dialog before saving and selecting it", () => {
     page.state.saved = [{name: "My beat", pattern: emptyPattern()}]
     page.state.selectedName = "My beat"
     const pattern = emptyPattern(2, "3/4")
@@ -279,11 +279,16 @@ describe("Drum saved-pattern controls", () => {
     pattern.tracks.snare[0] = true
     page.changePattern(pattern)
     page.newPattern()
-    expect(page.state.selectedName).toBe("")
-    expect(page.state.name).toBe("My beat 2")
-    expect(page.state.pattern).toEqual({...emptyPattern(2, "3/4"), bpm: 135, swing: 0.2})
+    expect(page.state.dialogAction).toBe("new")
+    expect(page.state.dialogName).toBe("My beat 2")
+    expect(page.state.pattern).toBe(pattern)
+    expect(page.state.selectedName).toBe("My beat")
     expect(storage.setItem).not.toHaveBeenCalled()
-    expect(page.state.saved.length).toBe(1)
+    page.submitPatternName()
+    expect(page.state.selectedName).toBe("My beat 2")
+    expect(page.state.dialogAction).toBeNull()
+    expect(page.state.pattern).toEqual({...emptyPattern(2, "3/4"), bpm: 135, swing: 0.2})
+    expect(page.state.saved.length).toBe(2)
   })
   it("deletes only the selected save and preserves the editable beat", () => {
     page.state.saved = [{name: "A", pattern: emptyPattern()}, {name: "B", pattern: emptyPattern(1, "6/8")}]
@@ -305,8 +310,40 @@ describe("Drum saved-pattern controls", () => {
     expect(page.state.saved).toBe(saved)
     expect(page.state.message).toContain("Could not save")
     page.newPattern()
-    page.save()
-    expect(page.state.selectedName).toBe("")
+    page.submitPatternName()
+    expect(page.state.dialogAction).toBe("new")
+    expect(page.state.dialogError).toContain("Could not save")
+    expect(page.state.selectedName).toBe("A")
     expect(page.state.saved).toBe(saved)
   })
+  it("prefills the save dialog and saves a renamed copy as the current selection", () => {
+    page.state.name = "Original"
+    page.save()
+    const pattern = page.state.pattern
+    page.openSaveDialog()
+    expect(page.state.dialogAction).toBe("save")
+    expect(page.state.dialogName).toBe("Original")
+    page.state.dialogName = "  Copy  "
+    page.submitPatternName()
+    expect(page.state.selectedName).toBe("Copy")
+    expect(page.state.dialogAction).toBeNull()
+    expect(page.state.saved.length).toBe(2)
+    expect(page.state.pattern).toBe(pattern)
+  })
+  it("keeps the naming dialog open for blank names and prevents New from overwriting a save", () => {
+    page.state.name = "Existing"
+    page.save()
+    storage.setItem.calls.reset()
+    page.newPattern()
+    page.state.dialogName = "   "
+    page.submitPatternName()
+    expect(page.state.dialogError).toContain("Enter a name")
+    expect(page.state.dialogAction).toBe("new")
+    page.state.dialogName = "Existing"
+    page.submitPatternName()
+    expect(page.state.dialogError).toContain("already exists")
+    expect(storage.setItem).not.toHaveBeenCalled()
+    expect(page.state.saved.length).toBe(1)
+  })
+
 })

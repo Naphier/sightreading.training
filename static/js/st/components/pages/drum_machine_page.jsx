@@ -17,13 +17,45 @@ function DrumIcon({name}) {
   </svg>
 }
 
+class PatternNameDialog extends React.Component {
+  dialog = React.createRef()
+  input = React.createRef()
+
+  componentDidMount() {
+    this.dialog.current.showModal()
+    this.input.current.focus()
+    this.input.current.select()
+  }
+
+  componentWillUnmount() {
+    if (this.dialog.current?.open) this.dialog.current.close()
+  }
+
+  render() {
+    const {action, name, error, onChange, onSubmit, onCancel} = this.props
+    return <dialog ref={this.dialog} className={styles.nameDialog} aria-labelledby="pattern-dialog-title"
+      onCancel={e => { e.preventDefault(); onCancel() }}>
+      <form onSubmit={e => { e.preventDefault(); onSubmit() }}>
+        <h2 id="pattern-dialog-title">{action === "new" ? "New pattern" : "Save pattern"}</h2>
+        <label>Pattern name<input ref={this.input} aria-label="Pattern name" aria-describedby="pattern-dialog-help" maxLength="60" required value={name} onChange={e => onChange(e.target.value)} /></label>
+        <p id="pattern-dialog-help">{action === "new" ? "Create a blank pattern with your current tempo and time signature." : "Saving an existing name replaces that saved pattern."}</p>
+        {error && <p role="alert">{error}</p>}
+        <div className={styles.dialogActions}>
+          <button type="button" onClick={onCancel}>Cancel</button>
+          <button type="submit">{action === "new" ? "Create" : "Save"}</button>
+        </div>
+      </form>
+    </dialog>
+  }
+}
+
 export default class DrumMachinePage extends React.Component {
   constructor(props) {
     super(props)
     let saved = [], message = ""
     try { saved = readSavedPatterns(window.localStorage) }
     catch { message = "Saved patterns could not be read. You can still create and play beats." }
-    this.state = {pattern: validatePattern(PRESETS[0].pattern), tempoInput: String(PRESETS[0].pattern.bpm), saved, selectedName: "", name: "My beat", muted: {}, volume: 0.7, playing: false, starting: false, currentStep: -1, message}
+    this.state = {pattern: validatePattern(PRESETS[0].pattern), tempoInput: String(PRESETS[0].pattern.bpm), saved, selectedName: "", name: "My beat", dialogAction: null, dialogName: "", dialogError: "", muted: {}, volume: 0.7, playing: false, starting: false, currentStep: -1, message}
     this.tagline = TAGLINES[Math.floor(Math.random() * TAGLINES.length)]
     this.audio = new DrumAudio(currentStep => this.setState({currentStep}))
   }
@@ -71,11 +103,10 @@ export default class DrumMachinePage extends React.Component {
   }
 
   newPattern() {
-    const {pattern, saved} = this.state
+    const {saved} = this.state
     let name = "My beat", suffix = 2
     while (saved.some(item => item.name === name)) name = `My beat ${suffix++}`
-    this.changePattern({...emptyPattern(pattern.bars, pattern.timeSignature), bpm: pattern.bpm, swing: pattern.swing})
-    this.setState({selectedName: "", name, message: "New pattern. Add some hits and save it with a name."})
+    this.setState({dialogAction: "new", dialogName: name, dialogError: ""})
   }
 
   loadSaved(name) {
@@ -85,15 +116,33 @@ export default class DrumMachinePage extends React.Component {
     this.setState({selectedName: name, name, message: ""})
   }
 
-  save() {
-    const name = this.state.name.trim()
-    if (!name) { this.setState({message: "Enter a name before saving."}); return }
-    if (name.length > 60) { this.setState({message: "Use a name of 60 characters or fewer."}); return }
-    if (this.state.saved.length >= 100 && !this.state.saved.some(item => item.name === name)) {
-      this.setState({message: "You can save up to 100 patterns. Delete one to make room."}); return
+  openSaveDialog() {
+    this.setState({dialogAction: "save", dialogName: this.state.name, dialogError: ""})
+  }
+
+  submitPatternName() {
+    const {pattern, saved, dialogAction, dialogName} = this.state
+    if (dialogAction === "new" && saved.some(item => item.name === dialogName.trim())) {
+      this.setState({dialogError: "A pattern with this name already exists. Choose another name."})
+      return
     }
-    const saved = [...this.state.saved.filter(item => item.name !== name), {name, pattern: validatePattern(this.state.pattern)}]
-    this.persist(saved, `Saved “${name}” on this browser.`, {selectedName: name, name})
+    const next = dialogAction === "new" ? {...emptyPattern(pattern.bars, pattern.timeSignature), bpm: pattern.bpm, swing: pattern.swing} : pattern
+    if (this.save(dialogName, next, {dialogAction: null, dialogError: ""}) && dialogAction === "new") this.changePattern(next)
+  }
+
+  save(rawName = this.state.name, pattern = this.state.pattern, state = {}) {
+    const name = rawName.trim()
+    const fail = message => {
+      this.setState({message, ...(this.state.dialogAction ? {dialogError: message} : {})})
+      return false
+    }
+    if (!name) return fail("Enter a name before saving.")
+    if (name.length > 60) return fail("Use a name of 60 characters or fewer.")
+    if (this.state.saved.length >= 100 && !this.state.saved.some(item => item.name === name)) {
+      return fail("You can save up to 100 patterns. Delete one to make room.")
+    }
+    const saved = [...this.state.saved.filter(item => item.name !== name), {name, pattern: validatePattern(pattern)}]
+    return this.persist(saved, `Saved “${name}” on this browser.`, {selectedName: name, name, ...state})
   }
 
   deleteSelected() {
@@ -106,31 +155,38 @@ export default class DrumMachinePage extends React.Component {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
       this.setState({saved, message, ...state})
-    } catch { this.setState({message: "Could not save changes. Browser storage may be full or unavailable."}) }
+      return true
+    } catch {
+      const message = "Could not save changes. Browser storage may be full or unavailable."
+      this.setState({message, ...(this.state.dialogAction ? {dialogError: message} : {})})
+      return false
+    }
   }
 
   render() {
-    const {pattern, tempoInput, saved, selectedName, name, muted, volume, playing, starting, currentStep, message} = this.state
+    const {pattern, tempoInput, saved, selectedName, dialogAction, dialogName, dialogError, muted, volume, playing, starting, currentStep, message} = this.state
     const meter = meterFor(pattern)
     const compound = pattern.timeSignature === "6/8"
     const steps = Array.from({length: pattern.bars * meter.steps}, (_, i) => i)
     return <main className={styles.page}>
+      {dialogAction && <PatternNameDialog action={dialogAction} name={dialogName} error={dialogError}
+        onChange={dialogName => this.setState({dialogName, dialogError: ""})} onSubmit={() => this.submitPatternName()}
+        onCancel={() => this.setState({dialogAction: null, dialogError: ""})} />}
       <header className={styles.heading}>
         <div><h1>Drum Machine</h1><p>{this.tagline}</p></div>
         <section className={styles.patternManager} aria-label="Saved patterns">
-          <form className={styles.patternTools} onSubmit={e => { e.preventDefault(); this.save() }}>
+          <div className={styles.patternTools}>
             <label className={styles.patternPicker}>Your patterns
               <select aria-label="Your patterns" value={selectedName} onChange={e => this.loadSaved(e.target.value)}>
                 <option value="" disabled>{saved.length ? "Unsaved pattern" : "No saved patterns yet"}</option>
                 {saved.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
               </select>
             </label>
-            <button type="submit" className={styles.iconButton} aria-label="Save pattern" title="Save pattern (an existing name replaces that saved pattern)"><DrumIcon name="save" /></button>
+            <button type="button" className={styles.iconButton} aria-label="Save pattern" title="Save pattern" onClick={() => this.openSaveDialog()}><DrumIcon name="save" /></button>
             <button type="button" className={styles.iconButton} aria-label="New pattern" title="New pattern" onClick={() => this.newPattern()}><DrumIcon name="plus" /></button>
             <button type="button" className={styles.iconButton} aria-label="Delete saved pattern" title="Delete selected saved pattern" disabled={!selectedName} onClick={() => this.deleteSelected()}><DrumIcon name="trash" /></button>
-            {!selectedName && <input className={styles.patternName} aria-label="Pattern name" placeholder="Pattern name" maxLength="60" value={name} onChange={e => this.setState({name: e.target.value})} />}
-          </form>
-          <small>Saved on this browser.</small>
+          </div>
+          <small title="Patterns currently save on this browser; account syncing is not available yet."><a href="/login">Login</a>/<a href="/register">Register</a> to cloud save</small>
         </section>
       </header>
       <p role="status" className={styles.message}>{message}</p>
