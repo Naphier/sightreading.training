@@ -10,14 +10,29 @@ export default class DrumMachinePage extends React.Component {
     let saved = [], message = ""
     try { saved = readSavedPatterns(window.localStorage) }
     catch { message = "Saved patterns could not be read. You can still create and play beats." }
-    this.state = {pattern: validatePattern(PRESETS[0].pattern), saved, name: "My beat", muted: {}, volume: 0.7, playing: false, starting: false, currentStep: -1, message}
+    this.state = {pattern: validatePattern(PRESETS[0].pattern), tempoInput: String(PRESETS[0].pattern.bpm), saved, name: "My beat", muted: {}, volume: 0.7, playing: false, starting: false, currentStep: -1, message}
     this.audio = new DrumAudio(currentStep => this.setState({currentStep}))
   }
 
   componentDidMount() { setTitle("Drum Machine") }
   componentWillUnmount() { this.unmounted = true; this.audio.dispose() }
 
-  changePattern(pattern) { this.setState({pattern}) }
+  changePattern(pattern) { this.setState({pattern, tempoInput: String(pattern.bpm)}) }
+
+  changeTempo(tempoInput) {
+    this.setState(({pattern}) => {
+      const bpm = Number(tempoInput)
+      return {tempoInput, pattern: tempoInput.trim() && Number.isFinite(bpm) && bpm >= 30 && bpm <= 240 ? {...pattern, bpm} : pattern}
+    })
+  }
+
+  commitTempo() {
+    this.setState(({pattern, tempoInput}) => {
+      const value = Number(tempoInput)
+      const bpm = tempoInput.trim() && Number.isFinite(value) ? Math.max(30, Math.min(240, value)) : pattern.bpm
+      return {pattern: {...pattern, bpm}, tempoInput: String(bpm)}
+    })
+  }
 
   async togglePlayback() {
     if (this.state.playing || this.state.starting) {
@@ -53,7 +68,7 @@ export default class DrumMachinePage extends React.Component {
   }
 
   render() {
-    const {pattern, saved, name, muted, volume, playing, starting, currentStep, message} = this.state
+    const {pattern, tempoInput, saved, name, muted, volume, playing, starting, currentStep, message} = this.state
     const steps = Array.from({length: pattern.bars * 16}, (_, i) => i)
     return <main className={styles.page}>
       <header className={styles.heading}>
@@ -63,12 +78,16 @@ export default class DrumMachinePage extends React.Component {
       <section className={styles.panel} aria-label="Playback controls">
         <div className={styles.controls}>
           <button className={styles.play} onClick={() => this.togglePlayback()}>{playing || starting ? "■ Stop" : "▶ Play"}</button>
-          <label>Tempo <input aria-label="Tempo BPM" type="number" min="30" max="240" value={pattern.bpm}
-            onChange={e => { const bpm = Number(e.target.value); if (bpm >= 30 && bpm <= 240) this.changePattern({...pattern, bpm}) }} /> BPM</label>
+          <label>Tempo <input aria-label="Tempo BPM" type="number" min="30" max="240" step="any" value={tempoInput}
+            onChange={e => this.changeTempo(e.target.value)} onBlur={() => this.commitTempo()}
+            onKeyDown={e => {
+              if (e.key === "Enter") { e.preventDefault(); this.commitTempo() }
+              if (e.key === "Escape") this.setState({tempoInput: String(pattern.bpm)})
+            }} /> BPM</label>
           <label>Length <select value={pattern.bars} onChange={e => this.changePattern(resizePattern(pattern, Number(e.target.value)))}>
             <option value="1">1 bar</option><option value="2">2 bars</option>
           </select></label>
-          <label>Swing {Math.round(pattern.swing * 100)}%<input type="range" min="0" max="50" value={Math.round(pattern.swing * 100)}
+          <label>Swing {Math.round(pattern.swing * 100)}%<input aria-label="Swing" title="Delays offbeat eighth notes (&). 0% is straight; 33% is a triplet shuffle." type="range" min="0" max="50" value={Math.round(pattern.swing * 100)}
             onChange={e => this.changePattern({...pattern, swing: Number(e.target.value) / 100})} /></label>
           <label>Volume <input type="range" min="0" max="100" value={Math.round(volume * 100)} onChange={e => {
             const value = Number(e.target.value) / 100

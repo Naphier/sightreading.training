@@ -33,9 +33,10 @@ export function resizePattern(pattern, bars) {
   return next
 }
 
-// Swing delays offbeat sixteenths; each pair still lasts one eighth note.
+// Swing delays the offbeat eighth (&), keeping sixteenths evenly spaced
+// within each eighth. Each quarter note retains its original duration.
 export function stepDuration(bpm, swing, step) {
-  return 60 / bpm / 4 * (step % 2 === 0 ? 1 + swing : 1 - swing)
+  return 60 / bpm / 4 * (step % 4 < 2 ? 1 + swing : 1 - swing)
 }
 
 function preset(name, bpm, hits, swing = 0) {
