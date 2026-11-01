@@ -26,7 +26,6 @@ text creates a new request and should be done only after checking GitHub.
 | --- | --- | --- |
 | `SR_FEEDBACK_ENABLED` | disabled | Set to `1` after configuration and migrations |
 | `SR_FEEDBACK_REPO` | `Naphier/sightreading.training` | Fixed server-side target for search and writes |
-| `SR_FEEDBACK_OWNER` | `Naphier` | Login mentioned when the threshold is reached |
 | `SR_FEEDBACK_THRESHOLD` | `5` | Positive integer, once per issue |
 | `SR_FEEDBACK_TOKEN_FILE` | none | Server-only secret file for a fine-grained GitHub token |
 | `SR_FEEDBACK_TOKEN` | none | Alternative to the file; never supply both |
@@ -49,13 +48,24 @@ Saved votes survive a GitHub outage. An atomic ten-minute per-issue lease avoids
 concurrent comment writers. A background timer retries up to ten pending issues
 per minute, with a one-minute backoff, and recovers expired leases after restart.
 The database count is authoritative. A marker identifies the aggregate count
-comment and a second marker identifies the threshold notification. The bot scans
+comment and the GitHub Actions bot uses a second marker for the threshold notification. Each writer scans
 its own comments before posting, including after ambiguous network errors, and
 never overwrites unrelated issue text. This greatly reduces duplicate alerts;
 GitHub offers no transactional idempotency for comment creation, so an uncertain
 remote write cannot have a strict exactly-once guarantee. After outages or a large
 backlog the GitHub count and mention can lag behind saved votes. The UI reports
 pending delivery. A generic error is logged without tokens or feedback text.
+
+The `.github/workflows/feedback-alert.yml` workflow posts the separate alert as
+`github-actions[bot]` so the owner's own runtime token does not suppress mention
+notifications. It reacts to count-comment creation/edits, with an hourly recovery
+scan of the 100 most recently updated issues and a manual issue-number option.
+The workflow only trusts the repository owner's count comments by default; set
+repository variable `FEEDBACK_BOT_LOGIN` if a dedicated user writes the comments.
+Set `FEEDBACK_ALERT_LOGIN` for a recipient other than the repository owner.
+For a dev feedback target, install this workflow and script in that test repository
+as well. The workflow must be merged onto the target's default branch and Actions
+enabled before count events can notify. GitHub may delay scheduled runs.
 
 The alert is a separate comment mentioning the configured maintainer at five
 website votes. Email delivery follows that user's GitHub notification preferences.

@@ -119,7 +119,7 @@ package.loaded.migrations =
       issue_number integer PRIMARY KEY CHECK (issue_number > 0),
       vote_comment_id bigint,
       synced_count integer NOT NULL DEFAULT -1,
-      alert_sent boolean NOT NULL DEFAULT false,
+      synced_threshold integer NOT NULL DEFAULT 0,
       sync_after timestamp NOT NULL DEFAULT now(),
       sync_lease timestamp NOT NULL DEFAULT now()
     )]]

@@ -7,12 +7,10 @@ local M = {}
 local function settings()
   assert_error(os.getenv('SR_FEEDBACK_ENABLED') == '1', 'Feedback is not available yet.')
   local repo = os.getenv('SR_FEEDBACK_REPO') or 'Naphier/sightreading.training'
-  local owner = os.getenv('SR_FEEDBACK_OWNER') or 'Naphier'
   local threshold = tonumber(os.getenv('SR_FEEDBACK_THRESHOLD') or '5')
   assert(repo:match('^[%w_.-]+/[%w_.-]+$'), 'Invalid feedback repository')
-  assert(owner:match('^[%w-]+$'), 'Invalid feedback owner')
   assert(threshold and threshold >= 1 and threshold <= 100000 and threshold % 1 == 0, 'Invalid feedback threshold')
-  return {repo = repo, owner = owner, threshold = threshold}
+  return {repo = repo, threshold = threshold}
 end
 local function github(method, path, body)
   local cfg = settings()
@@ -195,8 +193,8 @@ function M.sync(number)
       local comment = find_comment(number, marker)
       comment_id = comment and comment.id
     end
-    local body = marker .. '\n**Website upvotes: ' .. votes .. '**\n\nOne vote per signed-in website account. Native GitHub reactions are separate.'
-    if tonumber(lease.synced_count) ~= votes or not comment_id then
+    local body = marker .. '\n**Website upvotes: ' .. votes .. '**\nAlert threshold: ' .. settings().threshold .. '\n\nOne vote per signed-in website account. Native GitHub reactions are separate.'
+    if tonumber(lease.synced_count) ~= votes or tonumber(lease.synced_threshold) ~= settings().threshold or not comment_id then
       if comment_id then
         local patched = pcall(github, 'PATCH', '/repos/' .. settings().repo .. '/issues/comments/' .. comment_id, {body = body})
         if not patched then
@@ -208,17 +206,8 @@ function M.sync(number)
         comment_id = github('POST', issue_path(number) .. '/comments', {body = body}).id
       end
     end
-    db.query('UPDATE feedback_issues SET vote_comment_id = ?, synced_count = ? WHERE issue_number = ?', comment_id, votes, number)
-    local cfg = settings()
-    if votes >= cfg.threshold and not lease.alert_sent then
-      local alert_marker = '<!-- website-feedback-popular -->'
-      if not find_comment(number, alert_marker) then
-        github('POST', issue_path(number) .. '/comments', {
-          body = alert_marker .. '\n@' .. cfg.owner .. ' This issue has reached **' .. votes .. ' website upvotes** (threshold: ' .. cfg.threshold .. ').'
-        })
-      end
-      db.query('UPDATE feedback_issues SET alert_sent = true WHERE issue_number = ?', number)
-    end
+    db.query('UPDATE feedback_issues SET vote_comment_id = ?, synced_count = ?, synced_threshold = ? WHERE issue_number = ?', comment_id, votes, settings().threshold, number)
+
   end)
   db.query([[UPDATE feedback_issues SET sync_lease = now(), sync_after = now() + interval '1 minute'
     WHERE issue_number = ?]], number)
@@ -230,7 +219,7 @@ function M.reconcile()
   local rows = db.select([[f.issue_number FROM feedback_issues f
     WHERE f.sync_lease <= now() AND f.sync_after <= now()
       AND (f.synced_count <> (SELECT count(*) FROM feedback_votes v WHERE v.issue_number = f.issue_number)
-        OR (NOT f.alert_sent AND (SELECT count(*) FROM feedback_votes v WHERE v.issue_number = f.issue_number) >= ?))
+        OR f.synced_threshold <> ?)
     ORDER BY f.sync_after LIMIT 10]], settings().threshold)
   for _, row in ipairs(rows) do M.sync(row.issue_number) end
 end
