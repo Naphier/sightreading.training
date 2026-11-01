@@ -11,3 +11,6 @@ static/js/st/staff_assets.jsx
 *.tar.gz
 *.lua
 nginx.conf.compiled
+
+# Generated build identity; each image/preview writes its own timestamp.
+static/build-info.json

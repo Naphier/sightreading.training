@@ -9,6 +9,7 @@ import Keyboard from "st/components/keyboard"
 import StatsLightbox from "st/components/sight_reading/stats_lightbox"
 import Hotkeys from "st/components/hotkeys"
 import IconReset from "st/components/reset_icon"
+import BuildInfo from "st/components/build_info"
 
 import styles from "./sight_reading_page.module.css"
 import staffStyles from "st/components/staff.module.css"
@@ -559,6 +560,7 @@ export default class SightReadingPage extends React.Component {
         {this.renderSettings()}
       </TransitionGroup>
 
+      <footer className={styles.build_footer}><BuildInfo /></footer>
       {this.renderKeyboardToggle()}
       <Hotkeys keyMap={this.keyMap} />
     </div>;
@@ -611,6 +613,7 @@ export default class SightReadingPage extends React.Component {
     let [lower, upper] = this.state.currentStaff.range;
 
     return <Keyboard
+      className={styles.trainer_keyboard}
       lower={lower}
       upper={upper}
       midiOutput={this.props.midiOutput}
