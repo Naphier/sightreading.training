@@ -2,7 +2,8 @@
 return function()
   local db = require('lapis.db')
   local util = require('lapis.util')
-  local http = require('resty.http')
+  local original_http = package.loaded['resty.http']
+  local http = {}
   local factory = require('spec.factory')
   local feedback, issues, comments, calls, offline, pending_create, values
   local function fake_request(_, url, opts)
@@ -21,9 +22,14 @@ return function()
       comments[id].body = body.body
       result = comments[id]
     elseif url:find('/comments?', 1, true) then
-      result = comments
+      result = {}
+      local number = tonumber(url:match('/issues/(%d+)/'))
+      for _, comment in ipairs(comments) do
+        if comment.issue_number == number then result[#result + 1] = comment end
+      end
     elseif url:match('/comments$') then
-      result = {id = #comments + 1, body = body.body, user = {login = 'test-bot'}}
+      result = {id = #comments + 1, body = body.body, user = {login = 'test-bot'},
+        issue_number = tonumber(url:match('/issues/(%d+)/'))}
       comments[#comments + 1] = result
     elseif url:match('/issues$') and opts.method == 'POST' then
       local number = #issues + 1
@@ -50,12 +56,11 @@ return function()
     comments, calls, offline, pending_create = {}, {}, false, false
     values = {SR_FEEDBACK_ENABLED = '1', SR_FEEDBACK_TOKEN = 'test-token'}
     stub(os, 'getenv', function(name) return values[name] end)
-    stub(http, 'new', function()
-      return {set_timeouts = function() end, request_uri = fake_request}
-    end)
+    http.new = function() return {set_timeouts = function() end, request_uri = fake_request} end
+    package.loaded['resty.http'] = http
   end)
   after_each(function()
-    http.new:revert()
+    package.loaded['resty.http'] = original_http
     os.getenv:revert()
     db.query('TRUNCATE feedback_votes, feedback_submissions, feedback_issues RESTART IDENTITY')
     package.loaded['helpers.feedback'] = nil

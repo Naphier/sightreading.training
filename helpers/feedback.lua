@@ -87,7 +87,7 @@ local function search(query)
     end
   end
   assert_error(#terms > 0, 'Search needs a word with at least three letters or digits.')
-  return github('GET', '/search/issues?per_page=20&q=' .. ngx.escape_uri(table.concat(terms, ' OR ')))
+  return github('GET', '/search/issues?per_page=20&q=' .. util.escape(table.concat(terms, ' OR ')))
 end
 local function decorated(issue, user_id)
   local number = issue.number
@@ -222,7 +222,7 @@ function M.sync(number)
   end)
   db.query([[UPDATE feedback_issues SET sync_lease = now(), sync_after = now() + interval '1 minute'
     WHERE issue_number = ?]], number)
-  if not ok then ngx.log(ngx.ERR, 'Feedback GitHub synchronization pending') end
+  if not ok and ngx then ngx.log(ngx.ERR, 'Feedback GitHub synchronization pending') end
   return ok
 end
 function M.reconcile()
