@@ -1,7 +1,7 @@
 // Generates the frontend assets normally produced by tup, so the frontend
 // can be developed without the backend toolchain (tup, moonscript, lua).
-// Files are only written when missing or older than their sources, so a
-// tup-managed checkout is left alone.
+// Source-derived files are only written when missing or stale, so existing
+// tup-generated assets are left alone. Build identity is refreshed per invocation.
 
 import {readFileSync, writeFileSync, readdirSync, statSync, existsSync} from "fs"
 import {join, dirname, basename} from "path"
@@ -23,6 +23,12 @@ function stale(target, sources) {
 
 export function buildAssets() {
   const generated = []
+
+  // Stable for this preview/build invocation, never the browser refresh time.
+  // Production images replace this with their final image-build metadata.
+  const buildInfo = join(ROOT, "static/build-info.json")
+  writeFileSync(buildInfo, JSON.stringify({built_at: new Date().toISOString()}))
+  generated.push(buildInfo)
 
   // song parser: song_parser_peg.pegjs -> song_parser_peg.js
   const grammar = join(ROOT, "static/js/st/song_parser_peg.pegjs")
