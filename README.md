@@ -129,3 +129,18 @@ The script checks an image-only marker before changing PostgreSQL configuration.
 It discovers MoonScript specs once, excluding their generated Lua copies. The CI
 image uses Debian PostgreSQL 15; the private runtime integration also checks the
 production PostgreSQL 17 stack.
+
+
+## Website feedback
+
+The Feedback menu opens `/feedback`: search open issues, upvote a match, or create
+an issue after reviewing similar titles. Search is public; submission and voting
+require a website account. The author receives the first vote. PostgreSQL enforces
+one vote per account per issue. Website votes are mirrored in a bot comment on the
+GitHub issue; they are separate from GitHub reactions. At five votes, a separate
+comment mentions the maintainer once. Raising or lowering the threshold does not
+send another alert for already-alerted issues.
+
+This requires the full backend and `lapis migrate`. The frontend-only preview
+shows an availability message and never pretends to save feedback. See
+[the feedback integration contract](docs/feedback.md) for application settings.

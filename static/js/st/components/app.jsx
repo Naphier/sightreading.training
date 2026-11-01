@@ -9,6 +9,7 @@ import {PlayAlongPageWithParams as PlayAlongPage} from "st/components/pages/play
 import LatencyPage from "st/components/pages/latency"
 import MidiMonitorPage from "st/components/pages/midi_monitor"
 import SongsPage from "st/components/pages/songs"
+import FeedbackPage from "st/components/pages/feedback_page"
 import NotFoundPage from "st/components/pages/not_found"
 import Header from "st/components/header"
 
@@ -140,6 +141,7 @@ class Layout extends React.Component {
           <Route path="*" element={<SongsPage filter="invalid" {...pageProps} />} />
         </Route>
 
+        <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="/stats" element={<StatsPage {...pageProps} />} />
         <Route path="/latency" element={<LatencyPage {...pageProps} />} />
         <Route path="/midi-monitor" element={<MidiMonitorPage {...pageProps} />} />
