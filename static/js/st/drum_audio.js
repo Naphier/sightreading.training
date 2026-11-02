@@ -96,8 +96,23 @@ export default class DrumAudio {
     envelope.gain.setValueAtTime(attack ? 0.001 : voice.gain, time)
     if (attack) envelope.gain.linearRampToValueAtTime(voice.gain, time + attack)
     envelope.gain.exponentialRampToValueAtTime(0.001, time + voice.decay)
-    source.connect(filter).connect(envelope).connect(this.master)
-    source.onended = () => { source.disconnect(); filter.disconnect(); envelope.disconnect() }
+    let distortion
+    source.connect(filter)
+    if (voice.drive) {
+      distortion = ctx.createWaveShaper()
+      this.driveCurves ||= new Map()
+      if (!this.driveCurves.has(voice.drive)) {
+        this.driveCurves.set(voice.drive, Float32Array.from({length: 1024}, (_, i) => {
+          const x = i / 1023 * 2 - 1
+          return (1 + voice.drive) * x / (1 + voice.drive * Math.abs(x))
+        }))
+      }
+      distortion.curve = this.driveCurves.get(voice.drive)
+      distortion.oversample = "2x"
+      filter.connect(distortion).connect(envelope)
+    } else filter.connect(envelope)
+    envelope.connect(this.master)
+    source.onended = () => { source.disconnect(); filter.disconnect(); distortion?.disconnect(); envelope.disconnect() }
     source.start(time)
     source.stop(time + voice.decay)
   }

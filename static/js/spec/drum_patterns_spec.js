@@ -453,7 +453,7 @@ describe("Drum sets", () => {
     expect(() => validatePattern({...emptyPattern(), kit: "unknown"})).toThrow()
   })
   it("provides distinct voices for all eight tracks in each new kit", () => {
-    expect(DRUM_KITS.map(kit => kit.id)).toEqual(["classic", "rock", "wood", "jazz"])
+    expect(DRUM_KITS.map(kit => kit.id)).toEqual(["classic", "rock", "wood", "jazz", "808", "909", "industrial", "latin", "lofi", "taiko"])
     for (const kit of Object.values(KIT_VOICES)) for (const [id] of TRACKS) {
       expect(kit[id].length).toBeGreaterThan(0)
       for (const voice of kit[id]) {
@@ -477,7 +477,8 @@ describe("Drum sets", () => {
     audio.context = {
       createOscillator: source, createBufferSource: source,
       createGain: () => ({...node(), gain: {setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {}}}),
-      createBiquadFilter: () => ({...node(), frequency: {}, Q: {}})
+      createBiquadFilter: () => ({...node(), frequency: {}, Q: {}}),
+      createWaveShaper: () => node()
     }
     audio.master = node()
     audio.noise = {}
@@ -512,5 +513,41 @@ describe("Drum sets", () => {
       expect(audio.hit.calls.mostRecent().args[2]).toBe("wood")
       expect(audio.hit.calls.mostRecent().args[1]).toBeCloseTo(0.19, 8)
     } finally { audio.stop(); jasmine.clock().uninstall() }
+  })
+})
+
+
+describe("Drum playback keyboard shortcut", () => {
+  let page, event
+  beforeEach(() => {
+    page = new DrumMachinePage({})
+    spyOn(page, "togglePlayback")
+    event = {code: "Space", key: " ", preventDefault: jasmine.createSpy("preventDefault"), target: {closest: () => null}}
+  })
+  it("toggles playback and prevents page scrolling on Space", () => {
+    page.handlePlaybackKey(event)
+    expect(page.togglePlayback).toHaveBeenCalledTimes(1)
+    expect(event.preventDefault).toHaveBeenCalled()
+  })
+  it("leaves focused controls, editable text, dialogs, and repeated/modified keys alone", () => {
+    for (const patch of [{ctrlKey: true}, {shiftKey: true}, {metaKey: true}, {altKey: true}, {defaultPrevented: true}, {code: "Enter", key: "Enter"}, {target: {isContentEditable: true}}, {target: {closest: () => ({})}}]) {
+      page.handlePlaybackKey({...event, ...patch})
+    }
+    page.state.dialogAction = "save"
+    page.handlePlaybackKey(event)
+    expect(page.togglePlayback).not.toHaveBeenCalled()
+    expect(event.preventDefault).not.toHaveBeenCalled()
+  })
+  it("prevents scrolling without repeatedly toggling when Space is held", () => {
+    page.handlePlaybackKey({...event, repeat: true})
+    expect(page.togglePlayback).not.toHaveBeenCalled()
+    expect(event.preventDefault).toHaveBeenCalled()
+  })
+  it("unregisters its shortcut when leaving the page", () => {
+    spyOn(window, "removeEventListener")
+    spyOn(page.audio, "dispose")
+    page.componentWillUnmount()
+    expect(window.removeEventListener).toHaveBeenCalledWith("keydown", page.handlePlaybackKey)
+    expect(page.audio.dispose).toHaveBeenCalled()
   })
 })

@@ -62,8 +62,22 @@ export default class DrumMachinePage extends React.Component {
     this.audio = new DrumAudio(currentStep => this.setState({currentStep}))
   }
 
-  componentDidMount() { setTitle("Drum Machine") }
-  componentWillUnmount() { this.unmounted = true; this.audio.dispose() }
+  handlePlaybackKey = event => {
+    if ((event.code !== "Space" && event.key !== " ") || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || this.state.dialogAction) return
+    if (event.target?.isContentEditable || event.target?.closest?.("input, textarea, select, button, a, dialog, [role=button], [role=textbox]")) return
+    event.preventDefault()
+    if (!event.repeat) this.togglePlayback()
+  }
+
+  componentDidMount() {
+    setTitle("Drum Machine")
+    window.addEventListener("keydown", this.handlePlaybackKey)
+  }
+  componentWillUnmount() {
+    this.unmounted = true
+    window.removeEventListener("keydown", this.handlePlaybackKey)
+    this.audio.dispose()
+  }
 
   notify(message, state = {}) {
     this.setState(previous => ({...state, message, notificationId: (previous.notificationId || 0) + 1}))
@@ -197,7 +211,7 @@ export default class DrumMachinePage extends React.Component {
       <Toast message={message} notificationId={notificationId} onDismiss={() => this.setState({message: ""})} />
       <section className={styles.panel} aria-label="Playback controls">
         <div className={styles.controls}>
-          <button className={`${styles.play} ${styles.iconButton}`} aria-label={playing || starting ? "Stop" : "Play"} title={playing || starting ? "Stop" : "Play"} onClick={() => this.togglePlayback()}><DrumIcon name={playing || starting ? "stop" : "play"} /></button>
+          <button className={`${styles.play} ${styles.iconButton}`} aria-label={playing || starting ? "Stop" : "Play"} aria-keyshortcuts="Space" title={playing || starting ? "Stop (Space)" : "Play (Space)"} onClick={() => this.togglePlayback()}><DrumIcon name={playing || starting ? "stop" : "play"} /></button>
           <label>Tempo <input aria-label="Tempo BPM" type="number" min="30" max="240" step="any" value={tempoInput}
             onChange={e => this.changeTempo(e.target.value)} onBlur={() => this.commitTempo()}
             onKeyDown={e => {
@@ -232,7 +246,9 @@ export default class DrumMachinePage extends React.Component {
               className={`${styles[stepMarker(pattern, step).size]} ${currentStep === step ? styles.playhead : ""}`}>
               {stepMarker(pattern, step).label}
             </th>)}</tr></thead>
-            <tbody>{TRACKS.map(([id, label]) => <tr key={id}>
+            <tbody>{TRACKS.map(([id, defaultLabel]) => {
+              const label = DRUM_KITS.find(kit => kit.id === pattern.kit)?.labels?.[id] || defaultLabel
+              return <tr key={id}>
               <th scope="row"><button aria-pressed={!!muted[id]} aria-label={`Mute ${label}`} className={muted[id] ? styles.muted : ""}
                 onClick={() => this.setState({muted: {...muted, [id]: !muted[id]}})}>{label}{muted[id] ? " (muted)" : ""}</button></th>
               {steps.map(step => <td key={step} className={`${step % meter.beatSteps === 0 ? styles.beat : ""} ${currentStep === step ? styles.playhead : ""}`}>
@@ -243,7 +259,7 @@ export default class DrumMachinePage extends React.Component {
                     this.changePattern({...pattern, tracks: {...pattern.tracks, [id]: row}})
                   }}>{pattern.tracks[id][step] ? "●" : "·"}</button>
               </td>)}
-            </tr>)}</tbody>
+            </tr>})}</tbody>
           </table>
         </div>
       </section>
