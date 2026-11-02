@@ -9,7 +9,7 @@ export const TIME_SIGNATURES = {
   "4/4": {steps: 16, beatSteps: 4},
   "3/4": {steps: 12, beatSteps: 4},
   "5/4": {steps: 20, beatSteps: 4},
-  "6/8": {steps: 12, beatSteps: 6}
+  "6/8": {steps: 12, beatSteps: 4, tempoSteps: 6}
 }
 
 export function meterFor(pattern) { return TIME_SIGNATURES[pattern.timeSignature || "4/4"] }
@@ -36,10 +36,6 @@ export function stepMarker(pattern, step) {
   const {steps, beatSteps} = meterFor(pattern)
   const local = step % steps
   const bar = Math.floor(step / steps) + 1
-  if (pattern.timeSignature === "6/8") {
-    return {label: local % 2 === 0 ? `${bar}.${local / 2 + 1}` : "&",
-      size: local % beatSteps === 0 ? "quarter" : local % 2 === 0 ? "eighth" : "sixteenth"}
-  }
   return {label: local % 4 === 0 ? `${bar}.${local / 4 + 1}` : ["", "e", "&", "a"][local % 4],
     size: local % 4 === 0 ? "quarter" : local % 2 === 0 ? "eighth" : "sixteenth"}
 }
@@ -73,9 +69,9 @@ export function resizePattern(pattern, bars) {
 // Swing delays the offbeat eighth (&), keeping sixteenths evenly spaced
 // within each eighth. Each quarter note retains its original duration.
 export function stepDuration(bpm, swing, step, timeSignature = "4/4") {
-  // In compound time BPM counts dotted quarters. Keep the natural triplets straight.
-  if (timeSignature === "6/8") return 60 / bpm / 6
-  return 60 / bpm / 4 * (step % 4 < 2 ? 1 + swing : 1 - swing)
+  // In 6/8 BPM counts dotted quarters; the grid still groups four sixteenths.
+  const subdivisions = timeSignature === "6/8" ? 6 : 4
+  return 60 / bpm / subdivisions * (step % 4 < 2 ? 1 + swing : 1 - swing)
 }
 
 function preset(name, bpm, hits, swing = 0, timeSignature = "4/4") {

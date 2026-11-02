@@ -140,7 +140,8 @@ state persistence, audio lifecycle, accessibility, verification, and PR previews
 Open **Drum Machine** in the navigation or visit `/drum-machine`. Toggle hits across
 eight synthesized percussion tracks, mute instruments, set 30–240 BPM, and add
 eighth-note swing. Choose 4/4, 3/4, 5/4, or 6/8 with one or two bars; extending
-repeats the first bar. In 6/8, BPM counts dotted quarters and swing is disabled. Eighteen editable presets cover rock, funk, blues, hip-hop, dance, and more.
+repeats the first bar. In 6/8, BPM counts dotted quarters; twelve sixteenths are displayed as three
+quarter-note groups of 1 e & a, with adjustable swing. Eighteen editable presets cover rock, funk, blues, hip-hop, dance, and more.
 Use the top-right Your patterns selector and save/new/delete icons to manage up to
 100 named patterns on the current browser. New and Save open a naming dialog and preserve the current beat;
 confirming selects the named pattern in the dropdown. Saving the same name replaces

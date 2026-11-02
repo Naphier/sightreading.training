@@ -209,7 +209,7 @@ export default class DrumMachinePage extends React.Component {
           <label>Length <select value={pattern.bars} onChange={e => this.changePattern(resizePattern(pattern, Number(e.target.value)))}>
             <option value="1">1 bar</option><option value="2">2 bars</option>
           </select></label>
-          <label>Swing {compound ? "Triplet feel" : `${Math.round(pattern.swing * 100)}%`}<input aria-label="Swing" disabled={compound} title={compound ? "6/8 uses straight triplet groups; swing applies to quarter-note meters." : "Delays offbeat eighth notes (&). 0% is straight; 33% is a triplet shuffle."} type="range" min="0" max="50" value={Math.round(pattern.swing * 100)}
+          <label>Swing {Math.round(pattern.swing * 100)}%<input aria-label="Swing" title="Delays offbeat eighth notes (&). 0% is straight; 33% is a triplet shuffle." type="range" min="0" max="50" value={Math.round(pattern.swing * 100)}
             onChange={e => this.changePattern({...pattern, swing: Number(e.target.value) / 100})} /></label>
           <label title="Volume"><DrumIcon name="volume" /><input aria-label="Volume" type="range" min="0" max="100" value={Math.round(volume * 100)} onChange={e => {
             const value = Number(e.target.value) / 100
@@ -221,7 +221,7 @@ export default class DrumMachinePage extends React.Component {
         <div className={styles.sectionHeader}><h2>Just beat it</h2>
           <button className={styles.iconButton} aria-label="Clear pattern" title="Clear pattern" onClick={() => this.changePattern({...emptyPattern(pattern.bars, pattern.timeSignature), bpm: pattern.bpm, swing: pattern.swing})}><DrumIcon name="trash" /></button>
         </div>
-        <p className={styles.help}>Toggle steps to add hits. Mute individual tracks with their names. Two bars repeat the first bar when extended. {compound && "6/8: BPM counts dotted quarters; eighth notes are grouped 3 + 3."}</p>
+        <p className={styles.help}>Toggle steps to add hits. Mute individual tracks with their names. Two bars repeat the first bar when extended. {compound && "6/8: 12 sixteenths, shown in three quarter-note groups (1 e & a). BPM counts dotted quarters."}</p>
         <div className={styles.scroll} tabIndex="0" aria-label="Scrollable drum steps">
           <table className={styles.grid}>
             <thead><tr><th scope="col">Instrument / mute</th>{steps.map(step => <th key={step} scope="col"

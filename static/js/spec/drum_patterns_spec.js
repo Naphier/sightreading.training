@@ -179,8 +179,8 @@ describe("Drum time signatures", () => {
     for (const [signature, meter] of Object.entries(TIME_SIGNATURES)) {
       for (const bpm of [30, 100, 240]) for (const swing of [0, 0.33, 0.5]) {
         const durations = Array.from({length: meter.steps}, (_, i) => stepDuration(bpm, swing, i, signature))
-        expect(durations.reduce((a, b) => a + b)).toBeCloseTo(meter.steps / meter.beatSteps * 60 / bpm, 8)
-        if (signature === "6/8") expect(new Set(durations).size).toBe(1)
+        expect(durations.reduce((a, b) => a + b)).toBeCloseTo(meter.steps / (meter.tempoSteps || meter.beatSteps) * 60 / bpm, 8)
+        if (swing > 0) expect(durations[0]).toBeGreaterThan(durations[2])
       }
     }
   })
@@ -189,7 +189,15 @@ describe("Drum time signatures", () => {
     expect(stepMarker(emptyPattern(1, "5/4"), 16)).toEqual({label: "1.5", size: "quarter"})
     expect(stepMarker(emptyPattern(), 2)).toEqual({label: "&", size: "eighth"})
     expect(stepMarker(emptyPattern(), 3)).toEqual({label: "a", size: "sixteenth"})
-    expect(stepMarker(emptyPattern(1, "6/8"), 6)).toEqual({label: "1.4", size: "quarter"})
+    expect(stepMarker(emptyPattern(1, "6/8"), 4)).toEqual({label: "1.2", size: "quarter"})
+  })
+  it("shows four sixteenth subdivisions per quarter-note group in 6/8", () => {
+    const pattern = emptyPattern(2, "6/8")
+    expect(pattern.tracks.kick.length).toBe(24)
+    expect(Array.from({length: 16}, (_, step) => stepMarker(pattern, step).label)).toEqual([
+      "1.1", "e", "&", "a", "1.2", "e", "&", "a", "1.3", "e", "&", "a", "2.1", "e", "&", "a"
+    ])
+    expect(stepDuration(100, 0.5, 0, "6/8")).toBeGreaterThan(stepDuration(100, 0.5, 2, "6/8"))
   })
   it("loops the audio scheduler at each meter's actual bar boundary", async () => {
     jasmine.clock().install()
@@ -208,7 +216,7 @@ describe("Drum time signatures", () => {
         const pattern = emptyPattern(bars, signature)
         pattern.bpm = 120
         pattern.tracks.kick[0] = true
-        const loopSeconds = bars * meter.steps / meter.beatSteps * 0.5
+        const loopSeconds = bars * meter.steps / (meter.tempoSteps || meter.beatSteps) * 0.5
         try {
           await audio.start(() => pattern, () => ({}), 0.7)
           for (let tick = 0; tick < Math.ceil((loopSeconds + 0.1) / 0.025); tick++) {
