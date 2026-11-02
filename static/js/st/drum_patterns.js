@@ -9,7 +9,7 @@ export const TIME_SIGNATURES = {
   "4/4": {steps: 16, beatSteps: 4},
   "3/4": {steps: 12, beatSteps: 4},
   "5/4": {steps: 20, beatSteps: 4},
-  "6/8": {steps: 12, beatSteps: 4, tempoSteps: 6}
+  "6/8": {steps: 24, beatSteps: 4, tempoSteps: 12}
 }
 
 export function meterFor(pattern) { return TIME_SIGNATURES[pattern.timeSignature || "4/4"] }
@@ -50,10 +50,11 @@ export function validatePattern(value) {
   pattern.swing = value.swing
   for (const [id] of TRACKS) {
     const steps = value.tracks?.[id]
-    if (!Array.isArray(steps) || steps.length !== value.bars * meterFor(pattern).steps || steps.some(step => typeof step !== "boolean")) {
+    const legacySixEight = timeSignature === "6/8" && Array.isArray(steps) && steps.length === value.bars * 12
+    if (!Array.isArray(steps) || (!legacySixEight && steps.length !== value.bars * meterFor(pattern).steps) || steps.some(step => typeof step !== "boolean")) {
       throw new Error("Invalid drum steps")
     }
-    pattern.tracks[id] = [...steps]
+    pattern.tracks[id] = legacySixEight ? steps.flatMap(hit => [hit, false]) : [...steps]
   }
   return pattern
 }
@@ -69,8 +70,8 @@ export function resizePattern(pattern, bars) {
 // Swing delays the offbeat eighth (&), keeping sixteenths evenly spaced
 // within each eighth. Each quarter note retains its original duration.
 export function stepDuration(bpm, swing, step, timeSignature = "4/4") {
-  // In 6/8 BPM counts dotted quarters; the grid still groups four sixteenths.
-  const subdivisions = timeSignature === "6/8" ? 6 : 4
+  // In 6/8 each of the six eighth-note counts has four subdivisions.
+  const subdivisions = timeSignature === "6/8" ? 12 : 4
   return 60 / bpm / subdivisions * (step % 4 < 2 ? 1 + swing : 1 - swing)
 }
 
@@ -99,8 +100,8 @@ export const PRESETS = [
   preset("Jazz waltz", 135, {kick: [0], snare: [8], ride: [0, 4, 6, 8, 10]}, 0.33, "3/4"),
   preset("Five-beat rock", 110, {kick: [0, 8, 12], snare: [4, 16], closedHat: [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]}, 0, "5/4"),
   preset("Five-beat jazz", 125, {kick: [0, 12], snare: [8, 16], ride: [0, 4, 6, 8, 12, 16, 18]}, 0.2, "5/4"),
-  preset("Slow six", 65, {kick: [0], snare: [6], closedHat: [0, 2, 4, 6, 8, 10]}, 0, "6/8"),
-  preset("Celtic jig", 110, {kick: [0, 6], snare: [4, 10], closedHat: [0, 2, 4, 6, 8, 10], lowTom: [8], highTom: [2]}, 0, "6/8")
+  preset("Slow six", 65, {kick: [0], snare: [12], closedHat: [0, 4, 8, 12, 16, 20]}, 0, "6/8"),
+  preset("Celtic jig", 110, {kick: [0, 12], snare: [8, 20], closedHat: [0, 4, 8, 12, 16, 20], lowTom: [16], highTom: [4]}, 0, "6/8")
 ]
 
 export function readSavedPatterns(storage) {

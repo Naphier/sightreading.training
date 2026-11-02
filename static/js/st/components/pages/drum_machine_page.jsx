@@ -221,7 +221,7 @@ export default class DrumMachinePage extends React.Component {
         <div className={styles.sectionHeader}><h2>Just beat it</h2>
           <button className={styles.iconButton} aria-label="Clear pattern" title="Clear pattern" onClick={() => this.changePattern({...emptyPattern(pattern.bars, pattern.timeSignature), bpm: pattern.bpm, swing: pattern.swing})}><DrumIcon name="trash" /></button>
         </div>
-        <p className={styles.help}>Toggle steps to add hits. Mute individual tracks with their names. Two bars repeat the first bar when extended. {compound && "6/8: 12 sixteenths, shown in three quarter-note groups (1 e & a). BPM counts dotted quarters."}</p>
+        <p className={styles.help}>Toggle steps to add hits. Mute individual tracks with their names. Two bars repeat the first bar when extended. {compound && "6/8: six numbered beats, each with four subdivisions. BPM counts dotted quarters."}</p>
         <div className={styles.scroll} tabIndex="0" aria-label="Scrollable drum steps">
           <table className={styles.grid}>
             <thead><tr><th scope="col">Instrument / mute</th>{steps.map(step => <th key={step} scope="col"
@@ -233,7 +233,7 @@ export default class DrumMachinePage extends React.Component {
                 onClick={() => this.setState({muted: {...muted, [id]: !muted[id]}})}>{label}{muted[id] ? " (muted)" : ""}</button></th>
               {steps.map(step => <td key={step} className={`${step % meter.beatSteps === 0 ? styles.beat : ""} ${currentStep === step ? styles.playhead : ""}`}>
                 <button className={`${styles.step} ${pattern.tracks[id][step] ? styles.active : ""}`}
-                  aria-label={`${label}, bar ${Math.floor(step / meter.steps) + 1}, beat ${Math.floor(step % meter.steps / meter.beatSteps) + 1}, sixteenth ${step % meter.beatSteps + 1}`}
+                  aria-label={`${label}, bar ${Math.floor(step / meter.steps) + 1}, beat ${Math.floor(step % meter.steps / meter.beatSteps) + 1}, subdivision ${step % meter.beatSteps + 1}`}
                   aria-pressed={pattern.tracks[id][step]} onClick={() => {
                     const row = [...pattern.tracks[id]]; row[step] = !row[step]
                     this.changePattern({...pattern, tracks: {...pattern.tracks, [id]: row}})

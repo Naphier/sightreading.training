@@ -14,9 +14,11 @@ one or two bars, load presets, and save named patterns locally. It uses its own 
 does not require the global MIDI output picker.
 
 Tempo counts quarter notes in the simple meters and dotted quarters in 6/8.
-Swing delays offbeat eighths in every meter. The 6/8 bar contains twelve
-sixteenths, displayed as three quarter-note groups of 1 e & a; its tempo still
-counts two dotted quarters per bar. Grid grouping and tempo units are distinct. Changing meter preserves overlapping steps within each bar,
+Swing delays offbeat eighths in every meter. The 6/8 bar displays six
+numbered eighth-note beats, each with four subdivisions (24 cells, 32nd-note
+resolution); its tempo still
+counts two dotted quarters per bar. Grid grouping and tempo units are distinct. Legacy 12-cell 6/8 saves expand
+by placing each old hit in every second cell, preserving bar positions. Changing meter preserves overlapping steps within each bar,
 truncates removed beats, and adds silent steps for new beats. Saved patterns store
 the signature; older patterns without one load as 4/4. Restart playback at the
 first step after changing meter or bar count to discard already scheduled hits.

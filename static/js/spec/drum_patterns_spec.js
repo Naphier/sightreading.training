@@ -191,13 +191,26 @@ describe("Drum time signatures", () => {
     expect(stepMarker(emptyPattern(), 3)).toEqual({label: "a", size: "sixteenth"})
     expect(stepMarker(emptyPattern(1, "6/8"), 4)).toEqual({label: "1.2", size: "quarter"})
   })
-  it("shows four sixteenth subdivisions per quarter-note group in 6/8", () => {
+  it("shows all six numbered beats with four subdivisions each in 6/8", () => {
     const pattern = emptyPattern(2, "6/8")
-    expect(pattern.tracks.kick.length).toBe(24)
-    expect(Array.from({length: 16}, (_, step) => stepMarker(pattern, step).label)).toEqual([
-      "1.1", "e", "&", "a", "1.2", "e", "&", "a", "1.3", "e", "&", "a", "2.1", "e", "&", "a"
+    expect(pattern.tracks.kick.length).toBe(48)
+    expect(Array.from({length: 28}, (_, step) => stepMarker(pattern, step).label)).toEqual([
+      "1.1", "e", "&", "a", "1.2", "e", "&", "a", "1.3", "e", "&", "a", "1.4", "e", "&", "a", "1.5", "e", "&", "a", "1.6", "e", "&", "a", "2.1", "e", "&", "a"
     ])
     expect(stepDuration(100, 0.5, 0, "6/8")).toBeGreaterThan(stepDuration(100, 0.5, 2, "6/8"))
+  })
+  it("expands legacy 6/8 saves without moving hits in time or between bars", () => {
+    const legacy = emptyPattern(2, "6/8")
+    for (const [id] of TRACKS) legacy.tracks[id] = Array(24).fill(false)
+    legacy.tracks.kick[0] = true
+    legacy.tracks.snare[18] = true
+    const migrated = validatePattern(legacy)
+    expect(migrated.tracks.snare.length).toBe(48)
+    expect(migrated.tracks.kick[0]).toBeTrue()
+    expect(migrated.tracks.snare[36]).toBeTrue()
+    expect(migrated.tracks.snare.filter(Boolean).length).toBe(1)
+    expect(migrated.tracks.snare[37]).toBeFalse()
+    expect(validatePattern(migrated)).toEqual(migrated)
   })
   it("loops the audio scheduler at each meter's actual bar boundary", async () => {
     jasmine.clock().install()
