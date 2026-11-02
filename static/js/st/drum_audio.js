@@ -1,3 +1,4 @@
+import {KIT_VOICES} from "./drum_kits"
 import {TRACKS, stepDuration, meterFor} from "./drum_patterns"
 
 // Schedule against the audio clock, independently of React renders.
@@ -32,7 +33,7 @@ export default class DrumAudio {
         this.step %= pattern.bars * meterFor(pattern).steps
         const step = this.step
         for (const [id] of TRACKS) {
-          if (pattern.tracks[id][step] && !getMuted()[id]) this.hit(id, this.nextTime)
+          if (pattern.tracks[id][step] && !getMuted()[id]) this.hit(id, this.nextTime, pattern.kit)
         }
         this.pending.push({step, time: this.nextTime})
         this.nextTime += stepDuration(pattern.bpm, pattern.swing, step, pattern.timeSignature)
@@ -49,7 +50,11 @@ export default class DrumAudio {
     return true
   }
 
-  hit(id, time) {
+  hit(id, time, kit = "classic") {
+    if (KIT_VOICES[kit]) {
+      for (const voice of KIT_VOICES[kit][id]) this.voice(voice, time)
+      return
+    }
     const ctx = this.context
     const tonal = ["kick", "lowTom", "highTom"].includes(id)
     const length = {kick: 0.25, snare: 0.16, clap: 0.12, closedHat: 0.045, openHat: 0.3, ride: 0.4, lowTom: 0.22, highTom: 0.18}[id]
@@ -71,6 +76,30 @@ export default class DrumAudio {
     source.onended = () => { source.disconnect(); filter.disconnect(); envelope.disconnect() }
     source.start(time)
     source.stop(time + length)
+  }
+
+  voice(voice, time) {
+    const ctx = this.context
+    const source = voice.type === "noise" ? ctx.createBufferSource() : ctx.createOscillator()
+    if (voice.type === "noise") source.buffer = this.noise
+    else {
+      source.type = voice.type
+      source.frequency.setValueAtTime(voice.frequency, time)
+      source.frequency.exponentialRampToValueAtTime(voice.endFrequency, time + voice.decay)
+    }
+    const filter = ctx.createBiquadFilter()
+    filter.type = voice.filter || "lowpass"
+    filter.frequency.value = voice.filterFrequency || 14000
+    filter.Q.value = voice.filter === "bandpass" ? 0.8 : 0.7
+    const envelope = ctx.createGain()
+    const attack = voice.attack || 0
+    envelope.gain.setValueAtTime(attack ? 0.001 : voice.gain, time)
+    if (attack) envelope.gain.linearRampToValueAtTime(voice.gain, time + attack)
+    envelope.gain.exponentialRampToValueAtTime(0.001, time + voice.decay)
+    source.connect(filter).connect(envelope).connect(this.master)
+    source.onended = () => { source.disconnect(); filter.disconnect(); envelope.disconnect() }
+    source.start(time)
+    source.stop(time + voice.decay)
   }
 
   setVolume(value) {

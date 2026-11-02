@@ -1,4 +1,5 @@
 import {TRACKS, PRESETS, STORAGE_KEY, emptyPattern, validatePattern, resizePattern, readSavedPatterns, stepDuration, TIME_SIGNATURES, changeTimeSignature, stepMarker} from "st/drum_patterns"
+import {DRUM_KITS, KIT_VOICES} from "st/drum_kits"
 import DrumAudio from "st/drum_audio"
 import Toast from "st/components/toast"
 import DrumMachinePage from "st/components/pages/drum_machine_page"
@@ -433,5 +434,83 @@ describe("Temporary status toasts", () => {
     toast.componentWillUnmount()
     jasmine.clock().tick(6000)
     expect(dismiss).not.toHaveBeenCalled()
+  })
+})
+
+
+describe("Drum sets", () => {
+  it("keeps Classic as the legacy default and round trips each selected kit", () => {
+    const legacy = emptyPattern()
+    delete legacy.kit
+    expect(validatePattern(legacy).kit).toBe("classic")
+    for (const {id} of DRUM_KITS) {
+      const pattern = {...emptyPattern(), kit: id}
+      expect(validatePattern(pattern).kit).toBe(id)
+      expect(readSavedPatterns({getItem: () => JSON.stringify([{name: "Kit", pattern}])})[0].pattern.kit).toBe(id)
+      expect(resizePattern(pattern, 2).kit).toBe(id)
+      expect(changeTimeSignature(pattern, "6/8").kit).toBe(id)
+    }
+    expect(() => validatePattern({...emptyPattern(), kit: "unknown"})).toThrow()
+  })
+  it("provides distinct voices for all eight tracks in each new kit", () => {
+    expect(DRUM_KITS.map(kit => kit.id)).toEqual(["classic", "rock", "wood", "jazz"])
+    for (const kit of Object.values(KIT_VOICES)) for (const [id] of TRACKS) {
+      expect(kit[id].length).toBeGreaterThan(0)
+      for (const voice of kit[id]) {
+        expect(voice.decay).toBeGreaterThan(voice.attack || 0)
+        expect(voice.gain).toBeGreaterThan(0)
+        if (voice.type !== "noise") expect(voice.frequency).toBeGreaterThan(0)
+      }
+    }
+    expect(KIT_VOICES.rock.kick).not.toEqual(KIT_VOICES.jazz.kick)
+    expect(Object.values(KIT_VOICES.wood).flat().some(voice => voice.type === "noise")).toBeFalse()
+  })
+  it("schedules and cleans up every synthesized voice", () => {
+    const audio = new DrumAudio(() => {})
+    const sources = []
+    const node = () => ({connect(next) {return next}, disconnect: jasmine.createSpy("disconnect")})
+    const source = () => {
+      const value = {...node(), frequency: {setValueAtTime() {}, exponentialRampToValueAtTime() {}}, start: jasmine.createSpy("start"), stop: jasmine.createSpy("stop")}
+      sources.push(value)
+      return value
+    }
+    audio.context = {
+      createOscillator: source, createBufferSource: source,
+      createGain: () => ({...node(), gain: {setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {}}}),
+      createBiquadFilter: () => ({...node(), frequency: {}, Q: {}})
+    }
+    audio.master = node()
+    audio.noise = {}
+    for (const kit of DRUM_KITS) for (const [id] of TRACKS) audio.hit(id, 2, kit.id)
+    expect(sources.length).toBeGreaterThan(32)
+    for (const voice of sources) {
+      expect(voice.start).toHaveBeenCalledWith(2)
+      expect(voice.stop.calls.mostRecent().args[0]).toBeGreaterThan(2)
+      voice.onended()
+      expect(voice.disconnect).toHaveBeenCalled()
+    }
+  })
+  it("uses kit changes for upcoming hits without restarting the clock", async () => {
+    jasmine.clock().install()
+    spyOn(window, "requestAnimationFrame").and.returnValue(1)
+    spyOn(window, "cancelAnimationFrame")
+    const audio = new DrumAudio(() => {})
+    audio.context = {
+      currentTime: 0, sampleRate: 1, resume: async () => {},
+      createGain: () => ({gain: {}, connect() {}, disconnect() {}}),
+      createBuffer: () => ({getChannelData: () => new Float32Array(1)})
+    }
+    spyOn(audio, "hit")
+    const pattern = {...emptyPattern(), kit: "rock"}
+    pattern.tracks.kick.fill(true)
+    try {
+      await audio.start(() => pattern, () => ({}), 0.7)
+      expect(audio.hit.calls.mostRecent().args[2]).toBe("rock")
+      pattern.kit = "wood"
+      audio.context.currentTime = 0.1
+      jasmine.clock().tick(25)
+      expect(audio.hit.calls.mostRecent().args[2]).toBe("wood")
+      expect(audio.hit.calls.mostRecent().args[1]).toBeCloseTo(0.19, 8)
+    } finally { audio.stop(); jasmine.clock().uninstall() }
   })
 })

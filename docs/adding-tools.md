@@ -11,7 +11,10 @@ audio, or a backend. Keep the first version focused and usable by a guest.
 
 For the drum machine: edit a sixteenth-note grid in 4/4, 3/4, 5/4, or 6/8, loop
 one or two bars, load presets, and save named patterns locally. It uses its own Web Audio output and
-does not require the global MIDI output picker.
+does not require the global MIDI output picker. Four synthesized sets (Classic,
+Heavy Rock, Woodblocks, and Jazz) share the same track grid. Save the kit ID with
+the pattern, default legacy saves to Classic, and keep kit changes independent
+of the scheduler clock.
 
 Tempo counts quarter notes in the simple meters and dotted quarters in 6/8.
 Swing delays offbeat eighths in every meter. The 6/8 bar displays six

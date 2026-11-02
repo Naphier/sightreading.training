@@ -138,7 +138,7 @@ state persistence, audio lifecycle, accessibility, verification, and PR previews
 ### Drum Machine
 
 Open **Drum Machine** in the navigation or visit `/drum-machine`. Toggle hits across
-eight synthesized percussion tracks, mute instruments, set 30–240 BPM, and add
+eight synthesized percussion tracks, choose Classic, Heavy Rock, Woodblocks, or Jazz, mute instruments, set 30–240 BPM, and add
 eighth-note swing. Choose 4/4, 3/4, 5/4, or 6/8 with one or two bars; extending
 repeats the first bar. In 6/8, BPM counts dotted quarters; six numbered eighth-note beats each have four
 subdivisions (24 cells per bar), with adjustable swing. Eighteen editable presets cover rock, funk, blues, hip-hop, dance, and more.
@@ -147,3 +147,6 @@ Use the top-right Your patterns selector and save/new/delete icons to manage up 
 confirming selects the named pattern in the dropdown. Saving the same name replaces
 it. These patterns are local and do not sync to accounts. Playback uses Web Audio
 and stops when leaving the page. No external drum samples or MIDI setup are needed.
+
+Drum-set choices are saved with named patterns. Switching sets during playback
+keeps the beat running; loading a groove preset retains your selected set.

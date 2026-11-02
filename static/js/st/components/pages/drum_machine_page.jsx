@@ -1,5 +1,6 @@
 import * as React from "react"
 import {setTitle} from "st/globals"
+import {DRUM_KITS} from "st/drum_kits"
 import DrumAudio from "st/drum_audio"
 import Toast from "st/components/toast"
 import {TRACKS, PRESETS, STORAGE_KEY, emptyPattern, validatePattern, resizePattern, readSavedPatterns, TIME_SIGNATURES, meterFor, changeTimeSignature, stepMarker} from "st/drum_patterns"
@@ -203,6 +204,9 @@ export default class DrumMachinePage extends React.Component {
               if (e.key === "Enter") { e.preventDefault(); this.commitTempo() }
               if (e.key === "Escape") this.setState({tempoInput: String(pattern.bpm)})
             }} /> {compound ? "BPM (♩.)" : "BPM (♩)"}</label>
+          <label>Drum set <select aria-label="Drum set" value={pattern.kit} onChange={e => this.changePattern({...pattern, kit: e.target.value})}>
+            {DRUM_KITS.map(kit => <option key={kit.id} value={kit.id}>{kit.name}</option>)}
+          </select></label>
           <label>Time signature <select value={pattern.timeSignature} onChange={e => this.changePattern(changeTimeSignature(pattern, e.target.value))}>
             {Object.keys(TIME_SIGNATURES).map(signature => <option key={signature} value={signature}>{signature}</option>)}
           </select></label>
@@ -219,7 +223,7 @@ export default class DrumMachinePage extends React.Component {
       </section>
       <section className={styles.panel} aria-label="Pattern editor">
         <div className={styles.sectionHeader}><h2>Just beat it</h2>
-          <button className={styles.iconButton} aria-label="Clear pattern" title="Clear pattern" onClick={() => this.changePattern({...emptyPattern(pattern.bars, pattern.timeSignature), bpm: pattern.bpm, swing: pattern.swing})}><DrumIcon name="trash" /></button>
+          <button className={styles.iconButton} aria-label="Clear pattern" title="Clear pattern" onClick={() => this.changePattern({...emptyPattern(pattern.bars, pattern.timeSignature), kit: pattern.kit, bpm: pattern.bpm, swing: pattern.swing})}><DrumIcon name="trash" /></button>
         </div>
         <p className={styles.help}>Toggle steps to add hits. Mute individual tracks with their names. Two bars repeat the first bar when extended. {compound && "6/8: six numbered beats, each with four subdivisions. BPM counts dotted quarters."}</p>
         <div className={styles.scroll} tabIndex="0" aria-label="Scrollable drum steps">
@@ -246,7 +250,7 @@ export default class DrumMachinePage extends React.Component {
       <section className={styles.panel} aria-label="Preset patterns"><h2>Start with a groove</h2>
         <p>Load a preset, then edit any step. Presets also set time signature, tempo, and swing.</p>
         <div className={styles.presets}>{PRESETS.map(preset => <button key={preset.name} onClick={() => {
-          this.changePattern(validatePattern(preset.pattern)); this.setState({selectedName: "", name: `${preset.name} variation`, message: ""})
+          this.changePattern(validatePattern({...preset.pattern, kit: pattern.kit})); this.setState({selectedName: "", name: `${preset.name} variation`, message: ""})
         }}>{preset.name}<small>{preset.pattern.timeSignature} · {preset.pattern.bpm} BPM</small></button>)}</div>
       </section>
     </main>

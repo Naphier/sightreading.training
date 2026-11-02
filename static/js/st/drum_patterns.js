@@ -1,3 +1,5 @@
+import {DRUM_KITS} from "./drum_kits"
+
 export const TRACKS = [
   ["kick", "Kick"], ["snare", "Snare"], ["closedHat", "Closed hi-hat"],
   ["openHat", "Open hi-hat"], ["clap", "Clap"], ["lowTom", "Low tom"],
@@ -15,7 +17,7 @@ export const TIME_SIGNATURES = {
 export function meterFor(pattern) { return TIME_SIGNATURES[pattern.timeSignature || "4/4"] }
 
 export function emptyPattern(bars = 1, timeSignature = "4/4") {
-  return {bars, timeSignature, bpm: 100, swing: 0, tracks: Object.fromEntries(TRACKS.map(([id]) => [id, Array(bars * TIME_SIGNATURES[timeSignature].steps).fill(false)]))}
+  return {bars, timeSignature, kit: "classic", bpm: 100, swing: 0, tracks: Object.fromEntries(TRACKS.map(([id]) => [id, Array(bars * TIME_SIGNATURES[timeSignature].steps).fill(false)]))}
 }
 
 // Keep each bar's existing hits; newly added beats start silent.
@@ -46,6 +48,9 @@ export function validatePattern(value) {
   const timeSignature = value.timeSignature === undefined ? "4/4" : value.timeSignature
   if (typeof timeSignature !== "string" || !Object.hasOwn(TIME_SIGNATURES, timeSignature)) throw new Error("Invalid time signature")
   const pattern = emptyPattern(value.bars, timeSignature)
+  const kit = value.kit === undefined ? "classic" : value.kit
+  if (!DRUM_KITS.some(item => item.id === kit)) throw new Error("Invalid drum kit")
+  pattern.kit = kit
   pattern.bpm = value.bpm
   pattern.swing = value.swing
   for (const [id] of TRACKS) {
