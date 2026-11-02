@@ -10,6 +10,7 @@ import LatencyPage from "st/components/pages/latency"
 import MidiMonitorPage from "st/components/pages/midi_monitor"
 import SongsPage from "st/components/pages/songs"
 import NotFoundPage from "st/components/pages/not_found"
+import DrumMachinePage from "st/components/pages/drum_machine_page"
 import Header from "st/components/header"
 
 import DevicePickerLightbox from "st/components/device_picker_lightbox"
@@ -140,6 +141,7 @@ class Layout extends React.Component {
           <Route path="*" element={<SongsPage filter="invalid" {...pageProps} />} />
         </Route>
 
+        <Route path="/drum-machine" element={<DrumMachinePage {...pageProps} />} />
         <Route path="/stats" element={<StatsPage {...pageProps} />} />
         <Route path="/latency" element={<LatencyPage {...pageProps} />} />
         <Route path="/midi-monitor" element={<MidiMonitorPage {...pageProps} />} />
