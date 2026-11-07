@@ -15,3 +15,4 @@ import "spec/slide_to_zero_spec"
 import "spec/practice_timer_spec"
 
 import "spec/guitar_scales_spec"
+import "spec/chord_lab_spec"

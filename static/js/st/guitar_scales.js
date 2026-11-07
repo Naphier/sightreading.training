@@ -26,7 +26,7 @@ export const ROOTS = ["C", "C#", "Db", "D", "Eb", "E", "F", "F#", "Gb", "G", "Ab
 
 // Display the highest string first, as in guitar tablature. The pitch
 // utilities number middle C as C5, one above scientific pitch notation.
-const STANDARD_TUNING = ["E5", "B4", "G4", "D4", "A3", "E3"]
+export const STANDARD_TUNING = ["E5", "B4", "G4", "D4", "A3", "E3"]
 
 export function guitarScale(root, type, lastFret) {
   const scale = new SCALE_TYPES[type](root)

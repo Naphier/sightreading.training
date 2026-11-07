@@ -166,6 +166,7 @@ export default class Header extends React.Component {
       <NavLink key="play-along" to="/play-along" {...toggleActive}>Play Along</NavLink>,
       <NavLink key="drum-machine" to="/drum-machine" {...toggleActive}>Drum Machine</NavLink>,
       <NavLink key="guitar-scales" to="/guitar-scales" {...toggleActive}>Guitar Scales</NavLink>,
+      <NavLink key="chord-lab" to="/chord-lab" {...toggleActive}>Chord Lab</NavLink>,
       <NavLink end key="about" to="/about" {...toggleActive}>Guide</NavLink>,
     ]
 
